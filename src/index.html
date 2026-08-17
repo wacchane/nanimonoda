@@ -299,7 +299,13 @@ body::before{
 .rbody{margin-top:28px;font-size:14px;line-height:1.95}
 
 /* 役職適性のバー */
-.fit{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+.hexwrap{margin-top:14px;padding:6px 4px 0;border-radius:22px;box-shadow:var(--in)}
+.hex{width:100%;display:block;max-width:320px;margin:0 auto}
+.hexleg{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:2px;
+  font-size:10.5px;color:var(--ink-45);letter-spacing:.03em}
+.hexleg span{display:flex;align-items:center;gap:6px}
+.hexleg i{width:9px;height:9px;border-radius:50%;flex:none}
+.fit{display:flex;flex-direction:column;gap:11px;margin-top:18px}
 .fitrow{display:flex;align-items:center;gap:12px}
 .fitrow .fl{font-size:12.5px;letter-spacing:.03em;min-width:82px;color:var(--ink-70)}
 .fitrow .fl em{display:block;font-style:normal;font-size:9.5px;color:var(--ink-45);letter-spacing:.02em}
@@ -444,6 +450,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <div class="readout" id="r-readout"></div>
     <div class="rbody" id="r-body"></div>
     <p class="eyebrow" style="margin-top:30px">役職への向き</p>
+    <div id="r-hex" class="hexwrap"></div>
     <div class="fit" id="r-fit"></div>
     <p class="fittop" id="r-fittop"></p>
     <p class="note" id="r-note"></p>

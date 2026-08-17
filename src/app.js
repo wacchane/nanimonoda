@@ -241,6 +241,71 @@ function fitOf(s, w) {
   return max ? Math.round(((raw / max + 1) / 2) * 100) : 50;
 }
 
+/* ===== 六角形（6役職のレーダー） =====
+   6つの役職はちょうど六角形に収まる。畳まずに副代表を2枠に開いて使う。
+   隣り合うスポークが性質の近いものになるよう並び順を決めている。
+
+   注意: 6つの適性値は3軸から導いた合成値なので、互いに独立ではない。
+   六角形が取りうる形は3パラメータぶんに限られる。形の比較には使えるが、
+   6つの独立した情報が並んでいるわけではない。 */
+const HEX_ORDER = ['代表', '副代表:盛り上げ役', 'イベント係', '施設係', '会計係', '副代表:仕切り役'];
+const HEX_LABEL = {
+  '代表': ['代表'],
+  '副代表:盛り上げ役': ['副代表', '盛り上げ'],
+  'イベント係': ['イベント係'],
+  '施設係': ['施設係'],
+  '会計係': ['会計係'],
+  '副代表:仕切り役': ['副代表', '仕切り']
+};
+const keyOf = r => r.label + (r.kind ? ':' + r.kind : '');
+
+/* 畳まない6つぶんの適性を、六角形の並び順で返す */
+const hexFits = s => HEX_ORDER.map(k => {
+  const r = ROLES.find(x => keyOf(x) === k);
+  return { key: k, v: fitOf(s, r.w) };
+});
+
+/* series: [{ label, color, s }] */
+function hexChart(series) {
+  const C = 150, R = 88;
+  const at = (i, t) => {
+    const a = (-90 + i * 60) * Math.PI / 180;
+    return [C + Math.cos(a) * R * t, C + Math.sin(a) * R * t];
+  };
+  const poly = t => HEX_ORDER.map((_, i) => at(i, t).join(',')).join(' ');
+
+  const grid = [0.25, 0.5, 0.75, 1].map(t =>
+    `<polygon class="hx-grid" points="${poly(t)}"/>`).join('')
+    + HEX_ORDER.map((_, i) =>
+      `<line class="hx-grid" x1="${C}" y1="${C}" x2="${at(i,1)[0]}" y2="${at(i,1)[1]}"/>`).join('');
+
+  const shapes = series.map(sr => {
+    const f = hexFits(sr.s);
+    const pts = f.map((x, i) => at(i, x.v / 100).join(',')).join(' ');
+    return `<polygon points="${pts}" fill="${sr.color}" fill-opacity=".16"
+              stroke="${sr.color}" stroke-width="1.8" stroke-linejoin="round"/>`
+      + f.map((x, i) => { const [px2, py2] = at(i, x.v / 100);
+          return `<circle cx="${px2}" cy="${py2}" r="3" fill="${sr.color}"/>`; }).join('');
+  }).join('');
+
+  const labels = HEX_ORDER.map((k, i) => {
+    const [lx, ly] = at(i, 1.2);
+    const anchor = Math.abs(lx - C) < 6 ? 'middle' : (lx > C ? 'start' : 'end');
+    const lines = HEX_LABEL[k];
+    return `<text class="hx-lab" x="${lx}" y="${ly}" text-anchor="${anchor}"
+              dy="${lines.length > 1 ? '-0.1em' : '0.35em'}">${
+      lines.map((t, j) => `<tspan x="${lx}" dy="${j ? '1.15em' : 0}">${t}</tspan>`).join('')}</text>`;
+  }).join('');
+
+  return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="6役職への適性">
+    <style>
+      .hx-grid{fill:none;stroke:var(--grid);stroke-width:1}
+      .hx-lab{font-family:var(--sans);font-size:10px;font-weight:600;fill:var(--ink-70);letter-spacing:.02em}
+    </style>
+    ${grid}${shapes}${labels}
+  </svg>`;
+}
+
 /* 表示用。副代表は2枠を高いほうに畳んでから、適性の高い順に並べる */
 function roleFits(s) {
   const all = ROLES.map(r => ({ ...r, v: fitOf(s, r.w) }));
@@ -719,6 +784,7 @@ function showResult(kind, idx) {
   renderMap($('r-map'), [{ color: isPeer ? COL.peer : COL.self, s }], 'a');
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
+  $('r-hex').innerHTML = hexChart([{ color: isPeer ? COL.peer : COL.self, s }]);
   $('r-fit').innerHTML = fitBars(fits);
   /* 全部低く出た人に、いちばん高いだけの役職を勧めたように読ませない */
   const head = fits[0].v < 50
@@ -866,6 +932,11 @@ function fitCompare(me, agg) {
   const same = a[0].label === b[0].label;
   return `<div class="card-x">
     <div class="k">向いている役職の見え方</div>
+    ${hexChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
+    <div class="hexleg">
+      <span><i style="background:${COL.self}"></i>自己評価</span>
+      <span><i style="background:${COL.peer}"></i>他己評価 総合</span>
+    </div>
     <div class="v">${same ? '自他で一致' : '自他でずれ'}</div>
     <div class="d">${same
       ? `自分から見ても周りから見ても、最も向いているのは<b>${a[0].label}</b>でした。ここが一致しているのは、その役を任されたときに摩擦が起きにくいという意味です。`
