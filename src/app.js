@@ -405,12 +405,12 @@ function field(id) {
       letter-spacing:1.4px;fill:var(--lab)}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
     .fx-dot circle{fill:var(--dcore);
-      filter:drop-shadow(0 0 2px rgba(255,255,255,.95))
-             drop-shadow(0 0 5px rgba(255,255,255,.75))
-             drop-shadow(0 0 11px var(--dc))
-             drop-shadow(0 0 20px var(--dc))}
+      filter:drop-shadow(0 0 3px var(--dnear))
+             drop-shadow(0 0 8px var(--dnear))
+             drop-shadow(0 0 17px var(--dc))
+             drop-shadow(0 0 30px var(--dc))}
     .fx-dot.faint circle{opacity:.6;
-      filter:drop-shadow(0 0 2px rgba(255,255,255,.8)) drop-shadow(0 0 7px var(--dc))}
+      filter:drop-shadow(0 0 2px var(--dnear)) drop-shadow(0 0 7px var(--dc))}
     .fx-field{opacity:var(--wash)}
     .st-tl{stop-color:var(--c-tl)} .st-tr{stop-color:var(--c-tr)}
     .st-bl{stop-color:var(--c-bl)} .st-br{stop-color:var(--c-br)}
@@ -453,14 +453,19 @@ const py = o => (1 - o.ratio) * PLOT.w + PLOT.o;  // 温冷: 上=温
 /* 印は小さな白い光点。芯は白のまま、グローの外側だけ系統色を混ぜて、
    比較画面で自己評価と他己評価を見分けられるようにしている */
 function dot(x, y, col, r) {
-  return `<g class="fx-dot" style="--dc:${col.glow};--dcore:${col.core}">
+  return `<g class="fx-dot" style="--dc:${col.glow};--dnear:${col.near};--dcore:${col.core}">
     <circle cx="${x}" cy="${y}" r="${r}"/></g>`;
 }
 
-/* 自己評価は芯までパープル系、他己評価は白。大きさは同じにして色だけで分ける */
+/* 自己評価はパープル、他己評価は白。大きさは同じで、色だけで分ける。
+   near は芯のすぐ外のにじみ。ここを白にすると芯まで白っぽく見える。
+
+   **グローにテーマ変数（--cat-b 等）を使わないこと。**
+   ライト配色では濃い紫になり、光ではなく影として描かれて沈む。
+   発光する色は配色に依らず固定値で持つ。 */
 const COL = {
-  self: { glow: 'var(--cat-b)', core: '#DCCBFF' },
-  peer: { glow: '#FFFFFF',      core: '#FFFFFF' }
+  self: { core: '#C79BFF', near: 'rgba(190,140,255,1)', glow: '#8A4DFF' },
+  peer: { core: '#FFFFFF', near: 'rgba(255,255,255,.95)', glow: '#FFFFFF' }
 };
 
 /* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
@@ -474,7 +479,7 @@ function drawFlat(items, id) {
   return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
     ${field(id)}
     ${pts.filter(p => p.faint).map(p => `
-      <g class="fx-dot faint" style="--dc:${p.color.glow};--dcore:${p.color.core}">
+      <g class="fx-dot faint" style="--dc:${p.color.glow};--dnear:${p.color.near};--dcore:${p.color.core}">
         <circle cx="${p.x}" cy="${p.y}" r="1.4"/></g>`).join('')}
     ${line}
     ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 2.25 : 2.6)).join('')}
