@@ -288,8 +288,14 @@ body::before{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .readout .p{font-size:10px;color:var(--ink-45);letter-spacing:.02em}
 
-.mapcap{font-size:10.5px;color:var(--ink-45);text-align:center;margin-top:11px;
-  letter-spacing:.03em;line-height:1.7}
+.maptools{display:flex;align-items:center;gap:10px;margin-top:11px}
+.mapcap{flex:1;font-size:10.5px;color:var(--ink-45);letter-spacing:.03em;line-height:1.6;min-width:0}
+.viewtog{display:flex;gap:3px;padding:3px;border-radius:99px;box-shadow:var(--in);flex:none}
+.viewtog button{border:0;background:none;color:var(--ink-45);font-family:var(--sans);
+  font-weight:300;font-size:10.5px;letter-spacing:.06em;padding:0 13px;min-height:38px;
+  border-radius:99px;cursor:pointer;transition:color .2s,box-shadow .2s}
+.viewtog button.on{color:var(--cat-b);font-weight:600;background:var(--bg);box-shadow:var(--out-sm)}
+.viewtog button:focus-visible{outline:2px solid var(--cat-b);outline-offset:2px}
 .rbody{margin-top:28px;font-size:14px;line-height:1.95}
 
 /* 役職適性のバー */
@@ -428,7 +434,13 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <h2 class="rname" id="r-name"></h2>
     <p class="rcatch" id="r-catch"></p>
     <div class="mapwrap"><div id="r-map"></div></div>
-    <p class="mapcap">位置 = 陽陰 × 温冷／外周リングの埋まり = 堅緩</p>
+    <div class="maptools">
+      <p class="mapcap"></p>
+      <div class="viewtog" role="group" aria-label="表示の切り替え">
+        <button type="button" data-view="flat">平面</button>
+        <button type="button" data-view="cube">立体</button>
+      </div>
+    </div>
     <div class="readout" id="r-readout"></div>
     <div class="rbody" id="r-body"></div>
     <p class="eyebrow" style="margin-top:30px">役職への向き</p>
@@ -468,7 +480,13 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <h2 class="rname" id="i-title"></h2>
     <p class="rcatch" id="i-catch"></p>
     <div class="mapwrap"><div id="i-map"></div></div>
-    <p class="mapcap">位置 = 陽陰 × 温冷／外周リングの埋まり = 堅緩</p>
+    <div class="maptools">
+      <p class="mapcap"></p>
+      <div class="viewtog" role="group" aria-label="表示の切り替え">
+        <button type="button" data-view="flat">平面</button>
+        <button type="button" data-view="cube">立体</button>
+      </div>
+    </div>
     <div class="readout" id="i-readout"></div>
     <p class="note" id="i-note"></p>
     <div class="acts">
@@ -483,7 +501,13 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <p class="eyebrow">並べて見る</p>
     <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">自分と、まわりから見た自分</h2>
     <div class="mapwrap"><div id="c-map"></div></div>
-    <p class="mapcap">位置 = 陽陰 × 温冷／外周リングの埋まり = 堅緩。薄い点は個別の他己評価</p>
+    <div class="maptools">
+      <p class="mapcap" data-extra="。薄い点は個別の他己評価"></p>
+      <div class="viewtog" role="group" aria-label="表示の切り替え">
+        <button type="button" data-view="flat">平面</button>
+        <button type="button" data-view="cube">立体</button>
+      </div>
+    </div>
     <p class="rlabel" style="margin-top:22px">他己評価の総合</p>
     <div class="readout" id="c-readout"></div>
     <div class="legend" id="c-legend"></div>

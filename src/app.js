@@ -316,7 +316,8 @@ const STARS = [[24,40],[58,16],[97,68],[133,28],[176,54],[213,22],[247,86],[275,
                [20,124],[68,163],[117,140],[157,193],[195,129],[234,175],[271,146],
                [42,229],[90,265],[145,241],[188,279],[231,243],[277,219]];
 
-function field(id) {
+/* bare = true のときは星だけ。立体表示では2次元の軸ラベルと四辺の色が嘘になるので出さない */
+function field(id, bare) {
   const edge = [
     ['t', 'warm',  '0', '0', '0', '1'],   // 上 = 温
     ['b', 'cold',  '0', '1', '0', '0'],   // 下 = 冷
@@ -329,8 +330,9 @@ function field(id) {
     .fx-axis{stroke:var(--axis);stroke-width:1}
     .fx-lab{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:1.4px}
     .fx-sun{fill:var(--sun)}   .fx-shade{fill:var(--shade)}
-    .fx-warm{fill:var(--warm)} .fx-cold{fill:var(--cold)}
+    .fx-warm{fill:var(--warm)} .fx-cold{fill:var(--cold)} .fx-firm{fill:var(--cat-b)}
     .fx-star{fill:#FFFFFF;opacity:calc(var(--star) * .5)}
+    .map.cube{touch-action:none;cursor:grab} .map.cube:active{cursor:grabbing}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
     .st-sun{stop-color:var(--sun)}   .st-shade{stop-color:var(--shade)}
     .st-warm{stop-color:var(--warm)} .st-cold{stop-color:var(--cold)}
@@ -347,16 +349,18 @@ function field(id) {
   </defs>
   <g clip-path="url(#clip-${id})">
     ${STARS.map(([x, y], i) => `<circle class="fx-star" cx="${x}" cy="${y}" r="${i % 3 ? 0.9 : 1.3}"/>`).join('')}
+    ${bare ? '' : `
     ${edge.map(([k]) => `<rect class="fx-wash" x="0" y="0" width="300" height="300" fill="url(#w${k}-${id})"/>`).join('')}
     ${[75,150,225].map(v => `<line class="fx-grid" x1="${v}" y1="0" x2="${v}" y2="300"/>
        <line class="fx-grid" x1="0" y1="${v}" x2="300" y2="${v}"/>`).join('')}
     <line class="fx-axis" x1="150" y1="0" x2="150" y2="300"/>
-    <line class="fx-axis" x1="0" y1="150" x2="300" y2="150"/>
+    <line class="fx-axis" x1="0" y1="150" x2="300" y2="150"/>`}
   </g>
+  ${bare ? '' : `
   <text class="fx-lab fx-warm"  x="150" y="20"  text-anchor="middle">温</text>
   <text class="fx-lab fx-cold"  x="150" y="290" text-anchor="middle">冷</text>
   <text class="fx-lab fx-shade" x="13"  y="155" text-anchor="middle">陰</text>
-  <text class="fx-lab fx-sun"   x="287" y="155" text-anchor="middle">陽</text>`;
+  <text class="fx-lab fx-sun"   x="287" y="155" text-anchor="middle">陽</text>`}`;
 }
 
 const px = y => y.ratio * 250 + 25;        // 陽陰: 右=陽
@@ -389,34 +393,21 @@ function dot(x, y, color, r, k) {
 
 const COL = { self: 'var(--cat-a)', peer: 'var(--cat-c)' };
 
-function drawSingle(s, color) {
-  const x = px(s.y), y = py(s.o);
-  return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
-    ${field('a')}
-    <g class="pt">${dot(x, y, color, 9, s.k.ratio)}</g>
-    <style>
-      .pt{animation:pop .8s cubic-bezier(.22,.61,.36,1) both}
-      @keyframes pop{from{opacity:0;transform:scale(.55);transform-origin:${x}px ${y}px}to{opacity:1;transform:none}}
-      @media (prefers-reduced-motion:reduce){.pt{animation:none}}
-    </style>
-  </svg>`;
-}
-
 /* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
-function drawCompare(items) {
+function drawFlat(items, id) {
   const pts = items.map(it => ({ ...it, x: px(it.s.y), y: py(it.s.o) }));
   const main = pts.filter(p => !p.faint);
   const line = main.length > 1
     ? `<polyline points="${main.map(p => `${p.x},${p.y}`).join(' ')}" fill="none"
          stroke="var(--ink)" stroke-opacity=".3" stroke-width="1.4" stroke-dasharray="5 4"/>` : '';
   const placed = [];
-  return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="自己評価と他己評価の比較">
-    ${field('b')}
+  return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
+    ${field(id)}
     ${pts.filter(p => p.faint).map(p => `
       <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.color}" opacity=".42"/>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, 8, p.s.k.ratio)).join('')}
-    ${main.map(p => {
+    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 8 : 9, p.s.k.ratio)).join('')}
+    ${main.filter(p => p.label).map(p => {
       /* リングのぶんラベルを外に逃がす */
       const up = Math.max(p.y - 28, 32), down = Math.min(p.y + 36, 292);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
@@ -426,6 +417,164 @@ function drawCompare(items) {
     }).join('')}
   </svg>`;
 }
+
+/* ===== 立体表示 =====
+   X=陽陰 / Y=温冷 / Z=堅緩 を軸測投影する。
+   静止した3Dは奥行きが読めないので、床への垂線と影を必ず添える。
+   それでも一意には決まらないため、ドラッグで回せるようにしてある。 */
+const CUBE = { S: 60, cx: 150, cy: 152 };
+
+function proj(x, y, z, yaw, pitch) {
+  const a = yaw * Math.PI / 180, b = pitch * Math.PI / 180;
+  const sx = x * Math.cos(a) - y * Math.sin(a);
+  const sy = -(x * Math.sin(a) + y * Math.cos(a)) * Math.sin(b) - z * Math.cos(b);
+  return [CUBE.cx + sx * CUBE.S, CUBE.cy + sy * CUBE.S];
+}
+/* 手前ほど大きい。重なりの描画順に使う */
+const depth = (x, y, yaw) => {
+  const a = yaw * Math.PI / 180;
+  return -(x * Math.sin(a) + y * Math.cos(a));
+};
+
+const axOf = s => [s.y.ratio * 2 - 1, s.o.ratio * 2 - 1, s.k.ratio * 2 - 1];
+
+/* 点が近いとラベルが完全に重なるので、上がふさがっていたら下へ逃がす */
+function label3D(top, text, placed) {
+  const cand = [top[1] - 17, top[1] - 31, top[1] + 26, top[1] + 40];
+  const ly = cand.find(y =>
+    !placed.some(q => Math.abs(q.y - y) < 13 && Math.abs(q.x - top[0]) < 72)) ?? cand[0];
+  placed.push({ x: top[0], y: ly });
+  return `<text class="fx-cat" x="${top[0]}" y="${ly}" text-anchor="middle">${esc(text)}</text>`;
+}
+
+function draw3D(items, id, yaw, pitch) {
+  const P = (x, y, z) => proj(x, y, z, yaw, pitch);
+  const L = (p, q, cls) => `<line class="${cls}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`;
+
+  /* 床（緩の面）の方眼 */
+  const floor = [];
+  [-1, -0.5, 0, 0.5, 1].forEach(v => {
+    floor.push(L(P(v, -1, -1), P(v, 1, -1), v === 0 ? 'fx-axis' : 'fx-grid'));
+    floor.push(L(P(-1, v, -1), P(1, v, -1), v === 0 ? 'fx-axis' : 'fx-grid'));
+  });
+
+  /* 箱の稜線。上面と垂直の柱だけ引いて、線を増やしすぎない */
+  const corners = [[-1,-1],[1,-1],[1,1],[-1,1]];
+  const box = corners.map((c, i) => {
+    const n = corners[(i + 1) % 4];
+    return L(P(c[0], c[1], 1), P(n[0], n[1], 1), 'fx-grid')
+         + L(P(c[0], c[1], -1), P(c[0], c[1], 1), 'fx-grid');
+  }).join('');
+
+  /* 堅緩のラベルは、いちばん左に来た柱に添える */
+  const post = corners.reduce((a, c) =>
+    (P(c[0], c[1], 0)[0] < P(a[0], a[1], 0)[0] ? c : a));
+  /* 柱から少し外へ逃がさないと、床の軸ラベルとぶつかる */
+  const [kx, ky] = [P(post[0] * 1.34, post[1] * 1.34, 1.1),
+                    P(post[0] * 1.34, post[1] * 1.34, -1.1)];
+
+  const lab = (p, cls, t) =>
+    `<text class="fx-lab ${cls}" x="${p[0]}" y="${p[1]}" text-anchor="middle" dy=".35em">${t}</text>`;
+
+  /* 奥から順に描く */
+  const pts = items.map(it => {
+    const [x, y, z] = axOf(it.s);
+    return { ...it, x, y, z, d: depth(x, y, yaw) };
+  }).sort((a, b) => a.d - b.d);
+
+  const placed = [];
+  const body = pts.map(p => {
+    const top = P(p.x, p.y, p.z), foot = P(p.x, p.y, -1);
+    const shadow = `<ellipse cx="${foot[0]}" cy="${foot[1]}" rx="${p.faint ? 3 : 5}" ry="${p.faint ? 1.4 : 2.3}"
+        fill="var(--ink)" opacity="${p.faint ? .12 : .22}"/>`;
+    if (p.faint)
+      return shadow + `<circle cx="${top[0]}" cy="${top[1]}" r="4" fill="${p.color}" opacity=".42"/>`;
+    return shadow
+      + `<line x1="${top[0]}" y1="${top[1]}" x2="${foot[0]}" y2="${foot[1]}"
+              stroke="${p.color}" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="3 3"/>`
+      + dot(top[0], top[1], p.color, 8)
+      + (p.label ? label3D(top, p.label, placed) : '');
+  }).join('');
+
+  return `<svg class="map cube" viewBox="0 0 300 300" role="img" aria-label="3軸の立体表示">
+    ${field(id, true)}
+    ${floor.join('')}${box}
+    ${lab(P(1.52, 0, -1), 'fx-sun', '陽')}${lab(P(-1.52, 0, -1), 'fx-shade', '陰')}
+    ${lab(P(0, 1.52, -1), 'fx-warm', '温')}${lab(P(0, -1.52, -1), 'fx-cold', '冷')}
+    ${lab(kx, 'fx-firm', '堅')}${lab(ky, 'fx-firm', '緩')}
+    ${body}
+  </svg>`;
+}
+
+/* ===== 座標盤のマウント（平面 / 立体の切り替えとドラッグ回転） ===== */
+const view = (() => {
+  const KEY = 'nanimonoda.view';
+  let mode = 'flat';
+  try { mode = localStorage.getItem(KEY) === 'cube' ? 'cube' : 'flat'; } catch (e) {}
+  return {
+    get mode() { return mode; },
+    set(m) {
+      mode = m;
+      try { localStorage.setItem(KEY, m); } catch (e) {}
+      mounted.forEach(paint);
+      syncTools();
+    },
+    yaw: 38, pitch: 26
+  };
+})();
+const mounted = new Set();
+
+function paint(el) {
+  const { items, id } = el._map;
+  el.innerHTML = view.mode === 'cube'
+    ? draw3D(items, id, view.yaw, view.pitch)
+    : drawFlat(items, id);
+}
+
+function renderMap(el, items, id) {
+  el._map = { items, id };
+  mounted.add(el);
+  paint(el);
+  if (!el._wired) { wireDrag(el); el._wired = true; }
+}
+
+/* ドラッグで回す。奥行きは静止画では一意に決まらないので、動かせること自体が読み取りの手段 */
+function wireDrag(el) {
+  let last = null, raf = 0;
+  const move = e => {
+    if (!last) return;
+    e.preventDefault();
+    view.yaw = (view.yaw + (e.clientX - last.x) * 0.6) % 360;
+    view.pitch = Math.max(6, Math.min(72, view.pitch + (e.clientY - last.y) * 0.35));
+    last = { x: e.clientX, y: e.clientY };
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; mounted.forEach(paint); });
+  };
+  const up = () => {
+    last = null;
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+  };
+  el.addEventListener('pointerdown', e => {
+    if (view.mode !== 'cube') return;
+    last = { x: e.clientX, y: e.clientY };
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+  });
+}
+
+const CAP = {
+  flat: '位置 = 陽陰 × 温冷／外周リングの埋まり = 堅緩',
+  cube: '3軸をそのまま立体に。ドラッグで回せます'
+};
+function syncTools() {
+  document.querySelectorAll('.mapcap').forEach(p => {
+    p.textContent = CAP[view.mode] + (p.dataset.extra || '');
+  });
+  document.querySelectorAll('.viewtog button').forEach(b =>
+    b.classList.toggle('on', b.dataset.view === view.mode));
+}
+document.querySelectorAll('.viewtog button').forEach(b =>
+  b.onclick = () => view.set(b.dataset.view));
 
 /* ===== 画面制御 ===== */
 const $ = id => document.getElementById(id);
@@ -567,7 +716,7 @@ function showResult(kind, idx) {
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
   $('r-name').textContent = t.n;
   $('r-catch').textContent = t.c;
-  $('r-map').innerHTML = drawSingle(s, isPeer ? COL.peer : COL.self);
+  renderMap($('r-map'), [{ color: isPeer ? COL.peer : COL.self, s }], 'a');
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
   $('r-fit').innerHTML = fitBars(fits);
@@ -617,7 +766,7 @@ function showPeerSend() {
   const t = typeOf(pending.s);
   $('p-name').textContent = t.n;
   $('p-catch').textContent = t.c;
-  $('p-map').innerHTML = drawSingle(pending.s, COL.peer);
+  renderMap($('p-map'), [{ color: COL.peer, s: pending.s }], 'p');
   $('p-link').hidden = true;
   $('p-link').textContent = '';
   $('p-nick').value = '';
@@ -635,7 +784,7 @@ function showInbox(peer, idx) {
   const t = typeOf(peer.s);
   $('i-title').textContent = `${peer.nick}から見たあなた`;
   $('i-catch').textContent = `${t.n} — ${t.c}`;
-  $('i-map').innerHTML = drawSingle(peer.s, COL.peer);
+  renderMap($('i-map'), [{ color: COL.peer, s: peer.s }], 'i');
   $('i-readout').innerHTML = readout(peer.s);
   $('i-note').textContent = PEER_NOTE;
   const d = store.load();
@@ -653,11 +802,11 @@ function showCompare() {
   const me = d.self.s, agg = aggregate(d.peers);
   const n = d.peers.length;
 
-  $('c-map').innerHTML = drawCompare([
+  renderMap($('c-map'), [
     ...d.peers.map(p => ({ label: p.nick, color: COL.peer, s: p.s, faint: true })),
     { label: '自己評価', color: COL.self, s: me },
     { label: `他己評価(${n})`, color: COL.peer, s: agg }
-  ]);
+  ], 'c');
 
   $('c-legend').innerHTML = `
     <button class="btn lg" data-open="self">
@@ -765,6 +914,7 @@ $('btn-pcopy').onclick = () => {
 
 /* ===== 起動 ===== */
 theme.init();
+syncTools();
 
 function boot() {
   const got = readLink(location.hash);
