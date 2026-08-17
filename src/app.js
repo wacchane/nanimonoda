@@ -380,117 +380,58 @@ function aggregate(peers) {
 }
 
 /* ===== 座標盤（陽陰 × 温冷。係適は数値とバーで見せる） ===== */
-/* 四辺のモチーフ。陽=太陽(右) / 陰=月(左) / 温=炎(上) / 冷=氷(下)。
-   軸の向きをそのまま絵にして、凡例を読まずに極が分かるようにする。
-
-   様式はフラットデザイン / ベクターミニマリズム。
-   単色の幾何図形だけで作り、**影・グラデーション・アニメーションは使わない。**
-   濃淡が要るところは同色の重ね合わせで作る（色を増やさない）。 */
-const rad = a => a * Math.PI / 180;
-const on = (cx, cy, r, a) => [+(cx + Math.cos(rad(a)) * r).toFixed(1),
-                              +(cy + Math.sin(rad(a)) * r).toFixed(1)];
-
-/* 太陽: 正円 + 等間隔の光条 */
-const sunMark = (x, y, r) => `
-  <circle cx="${x}" cy="${y}" r="${r}"/>
-  <g fill="none" stroke-width="3.2" stroke-linecap="round">
-    ${[0,45,90,135,180,225,270,315].map(a => {
-      const [x1,y1] = on(x, y, r + 5, a), [x2,y2] = on(x, y, r + 11, a);
-      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
-    }).join('')}
-  </g>`;
-
-/* 月: 大小2つの円の差でつくる三日月 */
-const moonMark = (x, y, r) => `
-  <path d="M ${x},${y - r} A ${r},${r} 0 1 0 ${x},${y + r}
-           A ${r * .58},${r} 0 1 1 ${x},${y - r} Z"/>`;
-
-/* 炎: 涙形の外郭に、同色の芯を重ねて濃淡を出す。
-   芯が無いと水滴に見えてしまい、下辺の氷と意味がぶつかる */
-const flameMark = (x, y, h) => {
-  const w = h * .36, t = (k) => `M ${x},${y}
-    C ${x - w * k},${y - h * k * .34} ${x - w * k * .6},${y - h * k * .72} ${x},${y - h * k}
-    C ${x + w * k * .6},${y - h * k * .72} ${x + w * k},${y - h * k * .34} ${x},${y} Z`;
-  return `<path opacity=".5" d="${t(1)}"/><path d="${t(.58)}"/>`;
-};
-
-/* 氷: 六方向の枝からなる結晶 */
-const iceMark = (x, y, r) => `
-  <g fill="none" stroke-width="2.8" stroke-linecap="round">
-    ${[0,60,120,180,240,300].map(a => {
-      const [ex,ey] = on(x, y, r, a), [bx,by] = on(x, y, r * .52, a);
-      const [p1x,p1y] = on(bx, by, r * .36, a + 40), [p2x,p2y] = on(bx, by, r * .36, a - 40);
-      return `<line x1="${x}" y1="${y}" x2="${ex}" y2="${ey}"/>
-              <line x1="${bx}" y1="${by}" x2="${p1x}" y2="${p1y}"/>
-              <line x1="${bx}" y1="${by}" x2="${p2x}" y2="${p2y}"/>`;
-    }).join('')}
-  </g>`;
-
-/* 位置は同じ辺の軸ラベルとぶつからないようずらしてある
-   （温は上中央・冷は下中央・陰は左中央・陽は右中央にある） */
-const MOTIFS = `
-  <g class="fx-motif">
-    <g class="fx-warm-f">${flameMark(96, 44, 32)}</g>
-    <g class="fx-cold-f">${iceMark(206, 275, 16)}</g>
-    <g class="fx-sun-f">${sunMark(275, 98, 11)}</g>
-    <g class="fx-moon-f">${moonMark(25, 202, 13)}</g>
-  </g>`;
-
+/* 座標盤の地。四隅の色を直接指定した双一次（バイリニア）の面。
+   半透明を4枚重ねる方式は中央が白く抜けて彩度が出ないため、
+   下半分の面に上半分の面を縦フェードのマスクで重ねる形にしている。
+   四隅の意味: 左上=温×陰 / 右上=温×陽 / 左下=冷×陰 / 右下=冷×陽 */
 function field(id) {
-  const edge = [
-    ['t', 'warm',  '0', '0', '0', '1'],   // 上 = 温
-    ['b', 'cold',  '0', '1', '0', '0'],   // 下 = 冷
-    ['l', 'shade', '0', '0', '1', '0'],   // 左 = 陰
-    ['r', 'sun',   '1', '0', '0', '0']    // 右 = 陽
-  ];
   return `
   <style>
-    .fx-grid{stroke:var(--grid);stroke-width:1}
-    .fx-axis{stroke:var(--axis);stroke-width:1}
-    .fx-lab{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:1.4px}
-    .fx-sun{fill:var(--sun)}   .fx-shade{fill:var(--shade)}
-    .fx-warm{fill:var(--warm)} .fx-cold{fill:var(--cold)}
-    .fx-motif{opacity:var(--motif)}
-    .fx-warm-f{fill:var(--warm)} .fx-cold-f{stroke:var(--cold)}
-    .fx-sun-f{fill:var(--sun);stroke:var(--sun)} .fx-moon-f{fill:var(--shade)}
+    .fx-grid{stroke:var(--grid);stroke-width:1;fill:none}
+    .fx-axis{stroke:var(--axis);stroke-width:1.4}
+    .fx-lab{font-family:var(--sans);font-size:13px;font-weight:600;
+      letter-spacing:1.4px;fill:var(--lab)}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
-    .st-sun{stop-color:var(--sun)}   .st-shade{stop-color:var(--shade)}
-    .st-warm{stop-color:var(--warm)} .st-cold{stop-color:var(--cold)}
-    .st-on{stop-opacity:var(--wash)} .st-off{stop-opacity:0}
-    .fx-wash{mix-blend-mode:var(--wash-blend)}
+    .fx-field{opacity:var(--wash)}
+    .st-tl{stop-color:var(--c-tl)} .st-tr{stop-color:var(--c-tr)}
+    .st-bl{stop-color:var(--c-bl)} .st-br{stop-color:var(--c-br)}
   </style>
   <defs>
-    ${edge.map(([k, c, x1, y1, x2, y2]) => `
-      <linearGradient id="w${k}-${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">
-        <stop offset="0%" class="st-${c} st-on"/>
-        <stop offset="64%" class="st-${c} st-off"/>
-      </linearGradient>`).join('')}
+    <linearGradient id="top-${id}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" class="st-tl"/><stop offset="1" class="st-tr"/></linearGradient>
+    <linearGradient id="bot-${id}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" class="st-bl"/><stop offset="1" class="st-br"/></linearGradient>
+    <linearGradient id="fade-${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <mask id="mtop-${id}">
+      <rect x="0" y="0" width="300" height="300" fill="url(#fade-${id})"/></mask>
     <clipPath id="clip-${id}"><rect x="0" y="0" width="300" height="300" rx="20"/></clipPath>
   </defs>
   <g clip-path="url(#clip-${id})">
-    ${edge.map(([k]) => `<rect class="fx-wash" x="0" y="0" width="300" height="300" fill="url(#w${k}-${id})"/>`).join('')}
-    <rect class="fx-grid" x="50" y="50" width="200" height="200" fill="none"/>
+    <g class="fx-field">
+      <rect x="0" y="0" width="300" height="300" fill="url(#bot-${id})"/>
+      <rect x="0" y="0" width="300" height="300" fill="url(#top-${id})" mask="url(#mtop-${id})"/>
+    </g>
+    <rect class="fx-grid" x="50" y="50" width="200" height="200"/>
     ${[100,200].map(v => `<line class="fx-grid" x1="${v}" y1="50" x2="${v}" y2="250"/>
        <line class="fx-grid" x1="50" y1="${v}" x2="250" y2="${v}"/>`).join('')}
     <line class="fx-axis" x1="150" y1="50" x2="150" y2="250"/>
     <line class="fx-axis" x1="50" y1="150" x2="250" y2="150"/>
-    ${MOTIFS}
   </g>
-  <text class="fx-lab fx-warm"  x="150" y="26"  text-anchor="middle">温</text>
-  <text class="fx-lab fx-cold"  x="150" y="283" text-anchor="middle">冷</text>
-  <text class="fx-lab fx-shade" x="20"  y="155" text-anchor="middle">陰</text>
-  <text class="fx-lab fx-sun"   x="280" y="155" text-anchor="middle">陽</text>`;
+  <text class="fx-lab" x="150" y="26"  text-anchor="middle">温</text>
+  <text class="fx-lab" x="150" y="283" text-anchor="middle">冷</text>
+  <text class="fx-lab" x="22" y="155" text-anchor="middle">陰</text>
+  <text class="fx-lab" x="278" y="155" text-anchor="middle">陽</text>`;
 }
 
-/* プロットは中央の 50〜250 に収める。外側の余白は四辺のモチーフの居場所で、
-   ここを詰めると点とモチーフが重なる */
 const px = y => y.ratio * 200 + 50;        // 陽陰: 右=陽
 const py = o => (1 - o.ratio) * 200 + 50;  // 温冷: 上=温
 
 /* 点は1点だけ。輪もリングも付けない。影を1枚だけ敷いて面から浮かせる */
 function dot(x, y, color, r) {
   return `
-    <circle cx="${x + 1.4}" cy="${y + 1.4}" r="${r}" fill="var(--sd)"/>
+    <circle cx="${x}" cy="${y}" r="${r + 2.4}" fill="var(--plate)" opacity=".9"/>
     <circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
 }
 
