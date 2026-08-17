@@ -403,7 +403,6 @@ function field(id) {
     .fx-axis{stroke:var(--axis);stroke-width:1.4}
     .fx-lab{font-family:var(--sans);font-size:13px;font-weight:600;
       letter-spacing:1.4px;fill:var(--lab)}
-    .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
     .fx-dot circle{fill:var(--dcore);
       filter:drop-shadow(0 0 3px var(--dnear))
              drop-shadow(0 0 8px var(--dnear))
@@ -468,14 +467,14 @@ const COL = {
   peer: { core: '#FFFFFF', near: 'rgba(255,255,255,.95)', glow: '#FFFFFF' }
 };
 
-/* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
+/* items: [{ color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ）
+   点の脇に名前は出さない。どれがどれかは色と、盤の下の凡例で示す */
 function drawFlat(items, id) {
   const pts = items.map(it => ({ ...it, x: px(it.s.y), y: py(it.s.o) }));
   const main = pts.filter(p => !p.faint);
   const line = main.length > 1
     ? `<polyline points="${main.map(p => `${p.x},${p.y}`).join(' ')}" fill="none"
          stroke="var(--ink)" stroke-opacity=".3" stroke-width="1.4" stroke-dasharray="5 4"/>` : '';
-  const placed = [];
   return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
     ${field(id)}
     ${pts.filter(p => p.faint).map(p => `
@@ -483,13 +482,6 @@ function drawFlat(items, id) {
         <circle cx="${p.x}" cy="${p.y}" r="1.4"/></g>`).join('')}
     ${line}
     ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 2.25 : 2.6)).join('')}
-    ${main.filter(p => p.label).map(p => {
-      const up = Math.max(p.y - 14, 40), down = Math.min(p.y + 21, 268);
-      const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
-      const ly = hits(up) ? down : up;
-      placed.push({ x: p.x, y: ly });
-      return `<text class="fx-cat" x="${p.x}" y="${ly}" text-anchor="middle">${esc(p.label)}</text>`;
-    }).join('')}
   </svg>`;
 }
 
@@ -721,9 +713,9 @@ function showCompare() {
   const n = d.peers.length;
 
   $('c-map').innerHTML = drawFlat([
-    ...d.peers.map(p => ({ label: p.nick, color: COL.peer, s: p.s, faint: true })),
-    { label: '自己評価', color: COL.self, s: me },
-    { label: `他己評価(${n})`, color: COL.peer, s: agg }
+    ...d.peers.map(p => ({ color: COL.peer, s: p.s, faint: true })),
+    { color: COL.self, s: me },
+    { color: COL.peer, s: agg }
   ], 'c');
 
   $('c-legend').innerHTML = `
