@@ -404,7 +404,7 @@ function field(id) {
     .fx-lab{font-family:var(--sans);font-size:13px;font-weight:600;
       letter-spacing:1.4px;fill:var(--lab)}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
-    .fx-dot circle{fill:#FFFFFF;
+    .fx-dot circle{fill:var(--dcore);
       filter:drop-shadow(0 0 2px rgba(255,255,255,.95))
              drop-shadow(0 0 5px rgba(255,255,255,.75))
              drop-shadow(0 0 11px var(--dc))
@@ -432,30 +432,36 @@ function field(id) {
       <rect x="0" y="0" width="300" height="300" fill="url(#bot-${id})"/>
       <rect x="0" y="0" width="300" height="300" fill="url(#top-${id})" mask="url(#mtop-${id})"/>
     </g>
-    <rect class="fx-grid" x="50" y="50" width="200" height="200"/>
-    ${[100,200].map(v => `<line class="fx-grid" x1="${v}" y1="50" x2="${v}" y2="250"/>
-       <line class="fx-grid" x1="50" y1="${v}" x2="250" y2="${v}"/>`).join('')}
-    <line class="fx-axis" x1="150" y1="50" x2="150" y2="250"/>
-    <line class="fx-axis" x1="50" y1="150" x2="250" y2="150"/>
+    <rect class="fx-grid" x="28" y="28" width="244" height="244"/>
+    ${[89,211].map(v => `<line class="fx-grid" x1="${v}" y1="28" x2="${v}" y2="272"/>
+       <line class="fx-grid" x1="28" y1="${v}" x2="272" y2="${v}"/>`).join('')}
+    <line class="fx-axis" x1="150" y1="28" x2="150" y2="272"/>
+    <line class="fx-axis" x1="28" y1="150" x2="272" y2="150"/>
   </g>
-  <text class="fx-lab" x="150" y="26"  text-anchor="middle">温</text>
-  <text class="fx-lab" x="150" y="283" text-anchor="middle">冷</text>
-  <text class="fx-lab" x="22" y="155" text-anchor="middle">陰</text>
-  <text class="fx-lab" x="278" y="155" text-anchor="middle">陽</text>`;
+  <text class="fx-lab" x="150" y="19"  text-anchor="middle">温</text>
+  <text class="fx-lab" x="150" y="291" text-anchor="middle">冷</text>
+  <text class="fx-lab" x="14" y="155" text-anchor="middle">陰</text>
+  <text class="fx-lab" x="286" y="155" text-anchor="middle">陽</text>`;
 }
 
-const px = y => y.ratio * 200 + 50;        // 陽陰: 右=陽
-const py = o => (1 - o.ratio) * 200 + 50;  // 温冷: 上=温
+/* プロットは 28〜272。四辺に残した28は軸ラベルの居場所で、これ以上は詰められない */
+const PLOT = { o: 28, w: 244 };
+const px = y => y.ratio * PLOT.w + PLOT.o;        // 陽陰: 右=陽
+const py = o => (1 - o.ratio) * PLOT.w + PLOT.o;  // 温冷: 上=温
 
-/* 点は1点だけ。輪もリングも付けない。影を1枚だけ敷いて面から浮かせる */
+/* 点は1点だけ。輪もリングも付けない */
 /* 印は小さな白い光点。芯は白のまま、グローの外側だけ系統色を混ぜて、
    比較画面で自己評価と他己評価を見分けられるようにしている */
-function dot(x, y, color, r) {
-  return `<g class="fx-dot" style="--dc:${color}">
+function dot(x, y, col, r) {
+  return `<g class="fx-dot" style="--dc:${col.glow};--dcore:${col.core}">
     <circle cx="${x}" cy="${y}" r="${r}"/></g>`;
 }
 
-const COL = { self: 'var(--cat-b)', peer: '#FFFFFF' };   // 自己=パープル / 他己=ホワイト
+/* 自己評価は芯までパープル系、他己評価は白。大きさは同じにして色だけで分ける */
+const COL = {
+  self: { glow: 'var(--cat-b)', core: '#DCCBFF' },
+  peer: { glow: '#FFFFFF',      core: '#FFFFFF' }
+};
 
 /* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
 function drawFlat(items, id) {
@@ -468,10 +474,10 @@ function drawFlat(items, id) {
   return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
     ${field(id)}
     ${pts.filter(p => p.faint).map(p => `
-      <g class="fx-dot faint" style="--dc:${p.color}">
-        <circle cx="${p.x}" cy="${p.y}" r="1.2"/></g>`).join('')}
+      <g class="fx-dot faint" style="--dc:${p.color.glow};--dcore:${p.color.core}">
+        <circle cx="${p.x}" cy="${p.y}" r="1.4"/></g>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, (main.length > 1 ? 1.5 : 1.75) * (p.big ? 2 : 1))).join('')}
+    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 2.25 : 2.6)).join('')}
     ${main.filter(p => p.label).map(p => {
       const up = Math.max(p.y - 14, 40), down = Math.min(p.y + 21, 268);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
@@ -622,7 +628,7 @@ function showResult(kind, idx) {
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
   $('r-name').textContent = t.n;
   $('r-catch').textContent = t.c;
-  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s, big: !isPeer }], 'a');
+  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
   $('r-hex').innerHTML = hexChart([{ color: isPeer ? COL.peer : COL.self, s }]);
@@ -711,20 +717,20 @@ function showCompare() {
 
   $('c-map').innerHTML = drawFlat([
     ...d.peers.map(p => ({ label: p.nick, color: COL.peer, s: p.s, faint: true })),
-    { label: '自己評価', color: COL.self, s: me, big: true },
+    { label: '自己評価', color: COL.self, s: me },
     { label: `他己評価(${n})`, color: COL.peer, s: agg }
   ], 'c');
 
   $('c-legend').innerHTML = `
     <button class="btn lg" data-open="self">
-      <span class="sw" style="background:${COL.self}"></span>
+      <span class="sw" style="background:${COL.self.core}"></span>
       <span class="nm">自己評価</span><span class="ty">${typeOf(me).n}</span><span class="go">›</span></button>
     <div class="lg flat">
-      <span class="sw" style="background:${COL.peer}"></span>
+      <span class="sw" style="background:${COL.peer.core}"></span>
       <span class="nm">他己評価 総合</span><span class="ty">${typeOf(agg).n}（${n}件の平均）</span></div>
     ${d.peers.map((p, i) => `
     <button class="btn lg sub" data-open="peer:${i}">
-      <span class="sw" style="background:${COL.peer};opacity:.5"></span>
+      <span class="sw" style="background:${COL.peer.core};opacity:.5"></span>
       <span class="nm">${esc(p.nick)}</span><span class="ty">${typeOf(p.s).n}</span><span class="go">›</span></button>`).join('')}`;
   document.querySelectorAll('#c-legend [data-open]').forEach(b =>
     b.onclick = () => {
