@@ -96,17 +96,17 @@ const BANDS = {
    表示は `副代表` の1つに畳む（高いほうを採用）。 */
 const ROLE_LABELS = ['代表', '副代表', 'イベント係', '施設係', '会計係'];
 const ROLES = [
-  { label: '代表',       kind: '',           w: { y: 3, o: -2, c: 2 },
-    d: 'チームの代表として全体を俯瞰し、決める役。前に立てて、情に流されず、決めたことをやり切れる位置です。' },
-  { label: '副代表',     kind: '仕切り役',   w: { y: 2, o: -3, c: 3 },
-    d: '実行部隊の仕切り側。練習の中身と時間を締められる位置です。' },
-  { label: '副代表',     kind: '盛り上げ役', w: { y: 3, o: 3,  c: 1 },
-    d: '実行部隊の盛り上げ側。場を明るくして、人が離れないようにする位置です。' },
-  { label: 'イベント係', kind: '',           w: { y: 2, o: 3,  c: 2 },
-    d: '皆が楽しめるイベントを企画して運営する役。誰が楽しめていないかに気づける温かさと、段取り力の両方が要ります。' },
+  { label: '代表',       kind: '',           w: { y: 4, o: -2, c: 1 },
+    d: 'チームの代表として全体を俯瞰し、決める役。実務を自分で抱えるのではなく、前に立って方針を決め、情に流されずに判断できることが要ります。' },
+  { label: '副代表',     kind: '仕切り役',   w: { y: 2, o: -3, c: 4 },
+    d: '実行部隊の仕切り側。練習の中身と時間を締める役で、前に立つ力より現場を回し切る力が要ります。' },
+  { label: '副代表',     kind: '盛り上げ役', w: { y: 4, o: 2,  c: 1 },
+    d: '実行部隊の盛り上げ側。その場のテンションを上げて、人が離れないようにする役です。' },
+  { label: 'イベント係', kind: '',           w: { y: 1, o: 3,  c: 3 },
+    d: '皆が楽しめるイベントを企画して運営する役。目立つ力より、誰が楽しめていないかに気づける温かさと、形にする段取り力が要ります。' },
   { label: '施設係',     kind: '',           w: { y: -1, o: 0, c: 4 },
     d: '毎月の体育館予約を担う役。欠けると活動が成り立たない要の位置です。必要なのは目立つ力ではなく、頼まれる前に動けることと、それを毎月切らさないことです。' },
-  { label: '会計係',     kind: '',           w: { y: -1, o: -3, c: 4 },
+  { label: '会計係',     kind: '',           w: { y: -1, o: -4, c: 4 },
     d: '会費と収支を管理する役。相手が誰でも同じ基準で徴収できる冷静さと、数字を合わせ切る几帳面さが要ります。' }
 ];
 
@@ -380,9 +380,44 @@ function aggregate(peers) {
 }
 
 /* ===== 座標盤（陽陰 × 温冷。係適は数値とバーで見せる） ===== */
-const STARS = [[24,40],[58,16],[97,68],[133,28],[176,54],[213,22],[247,86],[275,44],
-               [20,124],[68,163],[117,140],[157,193],[195,129],[234,175],[271,146],
-               [42,229],[90,265],[145,241],[188,279],[231,243],[277,219]];
+/* 四辺のモチーフ。陽=太陽(右) / 陰=月(左) / 温=炎(上) / 冷=氷(下)。
+   軸の向きをそのまま絵にしたもので、常に動かして「どちら側か」を体で覚えられるようにする。
+   prefers-reduced-motion のときは :root の一括指定で止まる。 */
+const flame = (bx, h, w, delay) => `
+  <path class="fx-flame" style="animation-delay:${delay}s"
+        d="M ${bx},${14 + h} C ${bx - w},${14 + h * .72} ${bx - w * .62},${14 + h * .38} ${bx},14
+           C ${bx + w * .62},${14 + h * .38} ${bx + w},${14 + h * .72} ${bx},${14 + h} Z"/>`;
+const spike = (x, h, w, delay) => `
+  <path class="fx-frost" style="animation-delay:${delay}s"
+        d="M ${x - w},288 L ${x},${288 - h} L ${x + w},288 Z"/>`;
+const SUN = { x: 286, y: 104 }, MOON = { x: 18, y: 196 };
+const RAYS = [0,45,90,135,180,225,270,315].map(a => {
+  const t = a * Math.PI / 180;
+  return `<line x1="${(SUN.x + Math.cos(t) * 21).toFixed(1)}" y1="${(SUN.y + Math.sin(t) * 21).toFixed(1)}"
+                x2="${(SUN.x + Math.cos(t) * 29).toFixed(1)}" y2="${(SUN.y + Math.sin(t) * 29).toFixed(1)}"/>`;
+}).join('');
+
+/* 四辺の軸ラベル（温=上中央・冷=下中央・陰=左中央・陽=右中央）と重ならないよう、
+   モチーフは同じ辺の別の位置にずらしてある */
+const MOTIFS = `
+  <g class="fx-motif">
+    <g class="fx-warm-f">
+      ${flame(78, 30, 8, 0)}${flame(100, 42, 10, .35)}${flame(122, 27, 7, .7)}
+      ${flame(89, 20, 6, .5)}${flame(111, 22, 6, .18)}
+    </g>
+    <g class="fx-cold-f">
+      ${spike(176, 26, 7, 0)}${spike(194, 38, 8, .6)}${spike(212, 30, 7, 1.2)}
+      ${spike(230, 20, 6, .9)}${spike(248, 16, 6, 1.5)}
+    </g>
+    <g class="fx-sun-f">
+      <g class="fx-rays">${RAYS}</g>
+      <circle class="fx-orb" cx="${SUN.x}" cy="${SUN.y}" r="14"/>
+    </g>
+    <g class="fx-moon-f">
+      <path class="fx-orb" d="M ${MOON.x},${MOON.y - 15} A 15,15 0 1 1 ${MOON.x},${MOON.y + 15}
+                              A 11,15 0 1 0 ${MOON.x},${MOON.y - 15} Z"/>
+    </g>
+  </g>`;
 
 function field(id) {
   const edge = [
@@ -398,7 +433,25 @@ function field(id) {
     .fx-lab{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:1.4px}
     .fx-sun{fill:var(--sun)}   .fx-shade{fill:var(--shade)}
     .fx-warm{fill:var(--warm)} .fx-cold{fill:var(--cold)}
-    .fx-star{fill:#FFFFFF;opacity:calc(var(--star) * .5)}
+    .fx-motif{opacity:var(--motif)}
+    .fx-warm-f{fill:var(--warm)} .fx-cold-f{fill:var(--cold)}
+    .fx-sun-f{fill:var(--sun);stroke:var(--sun)} .fx-moon-f{fill:var(--shade)}
+    .fx-rays line{stroke-width:2.4;stroke-linecap:round;
+      animation:fxSpin 46s linear infinite;
+      transform-box:view-box;transform-origin:286px 104px}
+    .fx-orb{animation:fxGlow 5.5s ease-in-out infinite}
+    .fx-flame{animation:fxFlame 1.5s ease-in-out infinite;
+      transform-box:fill-box;transform-origin:50% 100%}
+    .fx-frost{animation:fxFrost 4.2s ease-in-out infinite;
+      transform-box:fill-box;transform-origin:50% 100%}
+    @keyframes fxSpin{to{transform:rotate(360deg)}}
+    @keyframes fxGlow{0%,100%{opacity:.55}50%{opacity:1}}
+    @keyframes fxFlame{0%,100%{transform:scaleY(1) skewX(0deg)}
+      25%{transform:scaleY(1.26) skewX(5deg)}
+      50%{transform:scaleY(.84) skewX(-4deg)}
+      75%{transform:scaleY(1.14) skewX(3deg)}}
+    @keyframes fxFrost{0%,100%{transform:scaleY(1);opacity:.6}
+      50%{transform:scaleY(1.18);opacity:1}}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
     .st-sun{stop-color:var(--sun)}   .st-shade{stop-color:var(--shade)}
     .st-warm{stop-color:var(--warm)} .st-cold{stop-color:var(--cold)}
@@ -414,12 +467,12 @@ function field(id) {
     <clipPath id="clip-${id}"><rect x="0" y="0" width="300" height="300" rx="20"/></clipPath>
   </defs>
   <g clip-path="url(#clip-${id})">
-    ${STARS.map(([x, y], i) => `<circle class="fx-star" cx="${x}" cy="${y}" r="${i % 3 ? 0.9 : 1.3}"/>`).join('')}
     ${edge.map(([k]) => `<rect class="fx-wash" x="0" y="0" width="300" height="300" fill="url(#w${k}-${id})"/>`).join('')}
     ${[75,150,225].map(v => `<line class="fx-grid" x1="${v}" y1="0" x2="${v}" y2="300"/>
        <line class="fx-grid" x1="0" y1="${v}" x2="300" y2="${v}"/>`).join('')}
     <line class="fx-axis" x1="150" y1="0" x2="150" y2="300"/>
     <line class="fx-axis" x1="0" y1="150" x2="300" y2="150"/>
+    ${MOTIFS}
   </g>
   <text class="fx-lab fx-warm"  x="150" y="20"  text-anchor="middle">温</text>
   <text class="fx-lab fx-cold"  x="150" y="290" text-anchor="middle">冷</text>
@@ -430,13 +483,11 @@ function field(id) {
 const px = y => y.ratio * 250 + 25;        // 陽陰: 右=陽
 const py = o => (1 - o.ratio) * 250 + 25;  // 温冷: 上=温
 
+/* 点は1点だけ。輪もリングも付けない。影を1枚だけ敷いて面から浮かせる */
 function dot(x, y, color, r) {
   return `
-    <circle cx="${x}" cy="${y}" r="${r * 2.7}" fill="none" stroke="${color}" stroke-opacity=".2"/>
-    <circle cx="${x + 1.6}" cy="${y + 1.6}" r="${r}" fill="var(--sd)"/>
-    <circle cx="${x - 1.6}" cy="${y - 1.6}" r="${r}" fill="var(--hl)"/>
-    <circle cx="${x}" cy="${y}" r="${r}" fill="var(--plate)"/>
-    <circle cx="${x}" cy="${y}" r="${r * .52}" fill="${color}"/>`;
+    <circle cx="${x + 1.4}" cy="${y + 1.4}" r="${r}" fill="var(--sd)"/>
+    <circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
 }
 
 const COL = { self: 'var(--cat-a)', peer: 'var(--cat-c)' };
@@ -454,9 +505,9 @@ function drawFlat(items, id) {
     ${pts.filter(p => p.faint).map(p => `
       <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.color}" opacity=".42"/>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 8 : 9)).join('')}
+    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 6 : 7)).join('')}
     ${main.filter(p => p.label).map(p => {
-      const up = Math.max(p.y - 18, 32), down = Math.min(p.y + 28, 292);
+      const up = Math.max(p.y - 15, 34), down = Math.min(p.y + 24, 290);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
       const ly = hits(up) ? down : up;
       placed.push({ x: p.x, y: ly });
