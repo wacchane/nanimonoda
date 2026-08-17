@@ -211,7 +211,17 @@ const theme = (() => {
   };
 })();
 
-/* ===== 採点 ===== */
+/* ===== 採点 =====
+   素点の割合は中央に集まりやすい。6問・順3逆3では1点の刻みが 5.6pt しかなく、
+   中央の隣が 44% / 56% にしかならないうえ、全問同じ選択肢だとちょうど50%に落ちる。
+   そこで中央から外へ引き伸ばす。指数が小さいほど強く広がる。
+   ※ 設問を増やすと刻みが細かくなり、かえって中央に寄る。ここは式で解く。 */
+const SPREAD_EXP = 0.55;
+const spread = raw => {
+  const d = raw * 2 - 1;
+  return (Math.sign(d) * Math.pow(Math.abs(d), SPREAD_EXP) + 1) / 2;
+};
+
 function band(ratio) {
   if (ratio <= 0.25) return 0;
   if (ratio <= 0.50) return 1;   // 50%ちょうどは陰側・冷側・任側に含める
@@ -225,7 +235,8 @@ function score(answers) {
     const list = QS.map((q, i) => ({ q, i })).filter(x => x.q.ax === a.id);
     const sum = list.reduce((acc, x) => acc + (x.q.dir === 1 ? answers[x.i] : 3 - answers[x.i]), 0);
     const max = list.length * 3;
-    out[a.id] = { n: list.length, sum, max, ratio: sum / max, band: band(sum / max) };
+    const ratio = spread(sum / max);
+    out[a.id] = { n: list.length, sum, max, ratio, band: band(ratio) };
   });
   return out;
 }
@@ -374,7 +385,8 @@ function aggregate(peers) {
   AXES.forEach(a => {
     const max = peers[0].s[a.id].max;
     const sum = peers.reduce((acc, p) => acc + p.s[a.id].sum, 0) / peers.length;
-    out[a.id] = { n: peers[0].s[a.id].n, sum, max, ratio: sum / max, band: band(sum / max) };
+    const ratio = spread(sum / max);   // 平均してから広げる
+    out[a.id] = { n: peers[0].s[a.id].n, sum, max, ratio, band: band(ratio) };
   });
   return out;
 }
@@ -443,7 +455,7 @@ function dot(x, y, color, r) {
     <circle cx="${x}" cy="${y}" r="${r}"/></g>`;
 }
 
-const COL = { self: 'var(--cat-a)', peer: 'var(--cat-c)' };
+const COL = { self: 'var(--cat-b)', peer: '#FFFFFF' };   // 自己=パープル / 他己=ホワイト
 
 /* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
 function drawFlat(items, id) {
@@ -459,7 +471,7 @@ function drawFlat(items, id) {
       <g class="fx-dot faint" style="--dc:${p.color}">
         <circle cx="${p.x}" cy="${p.y}" r="1.2"/></g>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 1.5 : 1.75)).join('')}
+    ${main.map(p => dot(p.x, p.y, p.color, (main.length > 1 ? 1.5 : 1.75) * (p.big ? 2 : 1))).join('')}
     ${main.filter(p => p.label).map(p => {
       const up = Math.max(p.y - 14, 40), down = Math.min(p.y + 21, 268);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
@@ -589,7 +601,7 @@ function finish() {
 /* ===== 表示部品 ===== */
 const readout = (s, exact = true) => AXES.map(a => `
   <div><div class="k">${a.name}</div><div class="v">${BANDS[a.id][s[a.id].band]}</div>
-    <div class="p">${exact ? `${s[a.id].sum}/${s[a.id].max} · ` : ''}${Math.round(s[a.id].ratio * 100)}%</div></div>`
+    <div class="p">${exact ? s[a.id].sum : '平均 ' + s[a.id].sum.toFixed(1)}/${s[a.id].max}</div></div>`
 ).join('');
 
 const fitBars = fits => fits.map((f, i) => `
@@ -610,7 +622,7 @@ function showResult(kind, idx) {
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
   $('r-name').textContent = t.n;
   $('r-catch').textContent = t.c;
-  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
+  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s, big: !isPeer }], 'a');
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
   $('r-hex').innerHTML = hexChart([{ color: isPeer ? COL.peer : COL.self, s }]);
@@ -699,7 +711,7 @@ function showCompare() {
 
   $('c-map').innerHTML = drawFlat([
     ...d.peers.map(p => ({ label: p.nick, color: COL.peer, s: p.s, faint: true })),
-    { label: '自己評価', color: COL.self, s: me },
+    { label: '自己評価', color: COL.self, s: me, big: true },
     { label: `他己評価(${n})`, color: COL.peer, s: agg }
   ], 'c');
 
