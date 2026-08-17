@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>何者だ — 2軸16タイプの性格診断</title>
-<meta name="description" content="陽キャ⇔陰キャ、温キャ⇔冷キャの2軸で、あなたを座標上の1点として示す性格診断。自己評価と他己評価のずれも見られます。">
+<title>何者だ — ディライトの役職適性診断</title>
+<meta name="description" content="18問に答えると、代表・副代表・イベント係・施設係・会計係への向きが出ます。自己評価と他己評価のずれも見られます。">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -222,7 +222,10 @@ body::before{
 .dial b{display:block;font-size:18px;letter-spacing:.08em;margin-bottom:3px;font-weight:600}
 .d-sun b{color:var(--sun)} .d-shade b{color:var(--shade)}
 .d-warm b{color:var(--warm)} .d-cold b{color:var(--cold)}
+.d-firm b{color:var(--cat-b)}
 .lede{color:var(--ink-70);font-size:13px;margin:24px 0 30px;line-height:1.95}
+.lede b{font-weight:600;color:var(--ink)}
+.cnt{font-size:10.5px;color:var(--ink-25);letter-spacing:.06em}
 
 .cats{display:flex;flex-direction:column;gap:12px;margin-top:14px}
 .group{margin-top:26px}
@@ -277,19 +280,30 @@ body::before{
 /* 座標盤は面にはめ込んだ窪みとして置く */
 .mapwrap{margin:28px 0 0;padding:14px;border-radius:26px;box-shadow:var(--in-deep)}
 .map{width:100%;display:block}
-.readout{display:flex;gap:10px;margin-top:16px}
-.readout>div{flex:1;padding:13px 14px;border-radius:var(--r-sm);box-shadow:var(--out-sm)}
-.readout .k{font-size:10px;letter-spacing:.12em;color:var(--ink-45)}
-.readout .v{font-size:15.5px;font-weight:600;letter-spacing:.04em;margin-top:3px}
-.readout .p{font-size:10.5px;color:var(--ink-45);letter-spacing:.03em}
+/* 3軸ぶん横に並べる。狭い画面では文字だけ小さくして3列を保つ */
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.readout>div{padding:12px 10px;border-radius:var(--r-sm);box-shadow:var(--out-sm);min-width:0}
+.readout .k{font-size:9.5px;letter-spacing:.1em;color:var(--ink-45)}
+.readout .v{font-size:13.5px;font-weight:600;letter-spacing:.02em;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout .p{font-size:10px;color:var(--ink-45);letter-spacing:.02em}
 
 .rbody{margin-top:28px;font-size:14px;line-height:1.95}
-.roles{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
-.role{
-  font-size:10.5px;letter-spacing:.08em;padding:8px 14px;border-radius:99px;color:var(--ink-45);
-  box-shadow:inset -2px -2px 4px var(--hl),inset 2px 2px 4px var(--sd);
-}
-.role.hi{color:var(--cat-b);font-weight:600;box-shadow:var(--out-sm)}
+
+/* 役職適性のバー */
+.fit{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+.fitrow{display:flex;align-items:center;gap:12px}
+.fitrow .fl{font-size:12.5px;letter-spacing:.03em;min-width:82px;color:var(--ink-70)}
+.fitrow .fl em{display:block;font-style:normal;font-size:9.5px;color:var(--ink-45);letter-spacing:.02em}
+.fitrow .fb{flex:1;height:9px;border-radius:99px;box-shadow:var(--in);position:relative;overflow:hidden}
+.fitrow .fb i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--ink-25);
+  transition:width .5s var(--ease)}
+.fitrow .fv{font-size:11.5px;color:var(--ink-45);min-width:26px;text-align:right}
+.fitrow.top .fl{color:var(--cat-b);font-weight:600}
+.fitrow.top .fb i{background:var(--cat-b);box-shadow:0 0 9px var(--cat-b)}
+.fitrow.top .fv{color:var(--cat-b);font-weight:600}
+.fittop{font-size:12.5px;line-height:1.9;color:var(--ink-70);margin-top:18px;
+  padding:15px 16px;border-radius:var(--r-sm);box-shadow:var(--in)}
 .note{
   font-size:11.5px;color:var(--ink-70);line-height:1.9;margin-top:26px;
   padding:16px 17px;border-radius:var(--r-sm);box-shadow:var(--in);
@@ -314,7 +328,10 @@ body::before{
 
 /* ===== 比較 ===== */
 .legend{display:flex;flex-direction:column;gap:10px;margin-top:18px}
-.lg{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-sm)}
+.lg{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-sm);min-height:48px}
+.lg.flat{box-shadow:var(--in)}
+.lg.sub{padding:11px 16px;min-height:42px}
+.lg.sub .nm,.lg.sub .ty{font-size:12px}
 .lg .sw{width:10px;height:10px;flex:none;border-radius:50%}
 .lg .nm{font-size:14px;font-weight:600;letter-spacing:.03em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
@@ -368,29 +385,23 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
   <!-- 表紙 -->
   <section id="s-home" class="screen on">
-    <h1>何者だ<span class="sub">2軸16タイプの性格診断</span></h1>
+    <h1>何者だ<span class="sub">ディライトの役職適性診断</span></h1>
     <div class="dial">
-      <div class="d-shade"><b>陰</b>内に向く</div>
-      <div class="d-sun"><b>陽</b>外に開く</div>
-      <div class="d-warm"><b>温</b>心で決める</div>
-      <div class="d-cold"><b>冷</b>筋で決める</div>
+      <div class="d-sun"><b>陽陰</b>前に出る</div>
+      <div class="d-warm"><b>温冷</b>情で決める</div>
+      <div class="d-firm"><b>堅緩</b>きっちり</div>
     </div>
-    <p class="lede">12問に答えると、そのときのあなたが座標上の1点として置かれます。<br>他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
+    <p class="lede">18問に答えると、3つの軸であなたの位置が出て、<b>代表・副代表・イベント係・施設係・会計係</b>への向きが並びます。<br>他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
 
-    <p class="eyebrow">自分を診断する</p>
-    <div class="cats" id="selflist"></div>
-
-    <div class="group">
-      <p class="eyebrow">他人を診断する</p>
-      <div class="cats" id="peerlist"></div>
-    </div>
+    <p class="eyebrow">診断する</p>
+    <div class="cats" id="menu"></div>
 
     <div class="group" id="inbox" hidden>
-      <p class="eyebrow">届いた他己評価</p>
+      <p class="eyebrow">届いた他己評価 <span id="inbox-count" class="cnt"></span></p>
       <div class="cats" id="inboxlist"></div>
     </div>
 
-    <button class="btn" id="btn-compare">2つ以上そろうと比べられます</button>
+    <button class="btn" id="btn-compare">まず自分を診断してください</button>
     <button class="ghost" id="btn-reset">記録をすべて消す</button>
   </section>
 
@@ -417,13 +428,15 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <div class="mapwrap"><div id="r-map"></div></div>
     <div class="readout" id="r-readout"></div>
     <div class="rbody" id="r-body"></div>
-    <div class="roles" id="r-roles"></div>
+    <p class="eyebrow" style="margin-top:30px">役職への向き</p>
+    <div class="fit" id="r-fit"></div>
+    <p class="fittop" id="r-fittop"></p>
     <p class="note" id="r-note"></p>
     <div class="acts">
-      <button class="btn primary" id="btn-front" hidden>結果を並べて見る</button>
+      <button class="btn primary" id="btn-front" hidden>自己評価と他己評価を比べる</button>
       <button class="btn" id="btn-share">結果をシェアする</button>
       <button class="btn" id="btn-other">表紙にもどる</button>
-      <button class="btn" id="btn-again">このカテゴリをやり直す</button>
+      <button class="btn" id="btn-again">もう一度やり直す</button>
     </div>
   </section>
 
@@ -464,8 +477,10 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
   <!-- 比較 -->
   <section id="s-compare" class="screen">
     <p class="eyebrow">並べて見る</p>
-    <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">いくつもの自分</h2>
+    <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">自分と、まわりから見た自分</h2>
     <div class="mapwrap"><div id="c-map"></div></div>
+    <p class="rlabel" style="margin-top:22px">他己評価の総合</p>
+    <div class="readout" id="c-readout"></div>
     <div class="legend" id="c-legend"></div>
     <div id="c-cards"></div>
     <div class="acts">

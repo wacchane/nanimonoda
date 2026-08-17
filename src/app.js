@@ -1,156 +1,173 @@
-/* ===== 何者だ — 2軸16タイプ性格診断 ===== */
+/* ===== 何者だ — ディライトの役職適性診断（3軸18問） ===== */
 
 /* 診断の種類。qk は QS.t のどの言い回しを使うか */
 const MODES = [
-  { id: 'general', kind: 'self', qk: 'general', name: '一般向け',      hint: '職場・友人・初対面に共通' },
-  { id: 'delight', kind: 'self', qk: 'delight', name: 'ディライト版',  hint: 'バレーサークル「ディライト」' },
-  { id: 'peer',    kind: 'peer', qk: 'other',   name: '他人を診断する', hint: '結果をリンクで相手に送れます' }
+  { id: 'self', kind: 'self', qk: 'self',  name: '自分を診断する',  hint: '18問 / 2〜3分' },
+  { id: 'peer', kind: 'peer', qk: 'other', name: '他人を診断する',  hint: '結果をリンクで相手に送れます' }
 ];
 const modeOf = id => MODES.find(m => m.id === id);
-const SELF_MODES = MODES.filter(m => m.kind === 'self');
 
 const SCALE = ['まったく違う', 'あまり違う', 'ややそう', 'とてもそう'];
 
-/* 12問 × 3版。facet と dir は3版で完全に同一で、翻訳するのは語彙だけ。
-   これがあるから版をまたいでスコアを直接比較できる。
-   設問文の出典: docs/01-測定設計.md 第5節・第6節・第6.5節 */
+/* 18問 = 3軸 × 6問。各軸で順3問・逆3問（黙従バイアスの相殺）。
+   self / other は主語を移しただけで、facet と dir は完全に同一。
+   これがあるから自己評価と他己評価を直接比較できる。
+   出典: docs/01-測定設計.md */
 const QS = [
+  /* ── 陽陰軸: 前に出る ⇔ 引く ── */
   { ax: 'y', dir: 1, facet: '対人接近性', t: {
-    general: '知らない人がいる場でも、自分から話しかけに行くほうだ',
-    delight: '練習に新しく来た人がいたら、自分から声をかけに行く',
-    other:   'この人は、知らない人がいる場でも自分から話しかけに行くほうだ' } },
+    self:  '練習に新しく来た人がいたら、自分から声をかけに行く',
+    other: 'この人は、練習に新しく来た人がいたら自分から声をかけに行く' } },
   { ax: 'y', dir: -1, facet: '一人時間の選好', t: {
-    general: '人と会う予定が急になくなると、少しホッとする',
-    delight: '練習が急に中止になると、少しホッとする',
-    other:   'この人は、人と会う予定が急になくなると少しホッとしていそうだ' } },
+    self:  '練習が急に中止になると、少しホッとする',
+    other: 'この人は、練習が急に中止になると少しホッとしていそうだ' } },
   { ax: 'y', dir: 1, facet: '集団での注目志向', t: {
-    general: '自分が話の中心にいると、テンションが上がる',
-    delight: 'コート上やミーティングで自分が中心にいると、テンションが上がる',
-    other:   'この人は、自分が話の中心にいるとテンションが上がる' } },
+    self:  'コート上やミーティングで自分が中心にいると、テンションが上がる',
+    other: 'この人は、コート上やミーティングで自分が中心にいるとテンションが上がる' } },
   { ax: 'y', dir: -1, facet: '社交後の消耗', t: {
-    general: '人と長く関わった日は、楽しくても後でどっと疲れる',
-    delight: '体を動かした疲れとは別に、人と長く関わった日は、楽しくてもどっと疲れる',
-    other:   'この人は、人と長く関わった日は楽しくても後でどっと疲れていそうだ' } },
+    self:  '体を動かした疲れとは別に、人と長く関わった日は、楽しくてもどっと疲れる',
+    other: 'この人は、体を動かした疲れとは別に、人と長く関わった日は楽しくても疲れていそうだ' } },
   { ax: 'y', dir: 1, facet: '発信性', t: {
-    general: '自分に話が振られていなくても、会話に自分から入っていく',
-    delight: 'サークル全体に関わる話題なら、自分から発言や提案を投稿するほうだ',
-    other:   'この人は、自分に話が振られていなくても会話に自分から入っていく' } },
+    self:  'サークル全体に関わる話題なら、自分から発言や提案を投稿するほうだ',
+    other: 'この人は、サークル全体に関わる話題なら自分から発言や提案を投稿する' } },
   { ax: 'y', dir: -1, facet: '会話の主導性', t: {
-    general: '会話が途切れても、無理に話題を探そうとは思わない',
-    delight: '練習の合間に会話が途切れても、無理に話題を探そうとは思わない',
-    other:   'この人は、会話が途切れても無理に話題を探そうとはしない' } },
+    self:  '練習の合間に会話が途切れても、無理に話題を探そうとは思わない',
+    other: 'この人は、練習の合間に会話が途切れても無理に話題を探そうとはしない' } },
+
+  /* ── 温冷軸: 情で決める ⇔ 理で決める ── */
   { ax: 'o', dir: 1, facet: '共感的傾聴', t: {
-    general: '誰かが悩みを話してきたら、解決策より先に気持ちに寄り添う',
-    delight: 'メンバーが悩みを話してきたら、解決策より先に気持ちに寄り添う',
-    other:   'この人は、誰かが悩みを話すと解決策より先に気持ちに寄り添う' } },
+    self:  'メンバーが悩みを話してきたら、解決策より先に気持ちに寄り添う',
+    other: 'この人は、メンバーが悩みを話すと解決策より先に気持ちに寄り添う' } },
   { ax: 'o', dir: -1, facet: '公平性 vs 個別配慮', t: {
-    general: '相手が誰であっても、ルールや基準は同じように適用すべきだ',
-    delight: '相手が誰であっても、サークルの決まりごとは同じように適用すべきだ',
-    other:   'この人は、相手が誰であってもルールや基準を同じように適用する' } },
+    self:  '相手が誰であっても、サークルの決まりごとは同じように適用すべきだ',
+    other: 'この人は、相手が誰であってもサークルの決まりごとを同じように適用する' } },
   { ax: 'o', dir: 1, facet: '情動伝染', t: {
-    general: '落ち込んでいる人がいると、自分まで気分が引きずられる',
-    delight: 'ミスして落ち込んでいるメンバーがいると、自分まで気分が引きずられる',
-    other:   'この人は、落ち込んでいる人がいると自分まで気分が引きずられるほうだ' } },
+    self:  'ミスして落ち込んでいるメンバーがいると、自分まで気分が引きずられる',
+    other: 'この人は、落ち込んでいるメンバーがいると自分まで気分が引きずられるほうだ' } },
   { ax: 'o', dir: -1, facet: '率直さ vs 配慮', t: {
-    general: '相手が傷つく可能性があっても、正しいと思うことは言う',
-    delight: '相手が気を悪くする可能性があっても、プレーについて正しいと思うことは言う',
-    other:   'この人は、相手が傷つく可能性があっても正しいと思うことは言う' } },
+    self:  '相手が気を悪くする可能性があっても、プレーについて正しいと思うことは言う',
+    other: 'この人は、相手が気を悪くする可能性があってもプレーについて正しいと思うことは言う' } },
   { ax: 'o', dir: 1, facet: '意思決定基準', t: {
-    general: '何かを決めるとき、正しさより全員が納得するかを重視する',
-    delight: '練習メニューや方針を決めるとき、正しさより全員が納得するかを重視する',
-    other:   'この人は、何かを決めるとき正しさより全員が納得するかを重視する' } },
+    self:  '練習メニューや方針を決めるとき、正しさより全員が納得するかを重視する',
+    other: 'この人は、練習メニューや方針を決めるとき正しさより全員が納得するかを重視する' } },
   { ax: 'o', dir: -1, facet: '感情への反応スタイル', t: {
-    general: '感情的になっている人がいると、まず落ち着いて事実を整理したくなる',
-    delight: '感情的になっている人がいると、まず落ち着いて事実を整理したくなる',
-    other:   'この人は、感情的になっている人がいると、まず落ち着いて事実を整理しようとする' } }
+    self:  '感情的になっている人がいると、まず落ち着いて事実を整理したくなる',
+    other: 'この人は、感情的になっている人がいると、まず落ち着いて事実を整理しようとする' } },
+
+  /* ── 堅緩軸: きっちり ⇔ ゆるい ──
+     施設係・会計係に本当に効くのはここ。陽陰でも温冷でもない第3の軸として新設した */
+  { ax: 'k', dir: 1, facet: '締切の扱い', t: {
+    self:  '出欠の返事や提出物は、期限より早めに出すほうだ',
+    other: 'この人は、出欠の返事や提出物を期限より早めに出すほうだ' } },
+  { ax: 'k', dir: -1, facet: '先延ばし', t: {
+    self:  '気が乗らない連絡や手続きは、つい後回しにしてしまう',
+    other: 'この人は、気が乗らない連絡や手続きを後回しにしがちに見える' } },
+  { ax: 'k', dir: 1, facet: '手順の一貫性', t: {
+    self:  '一度決まったやり方は、毎回同じ手順で進める',
+    other: 'この人は、一度決まったやり方を毎回同じ手順で進める' } },
+  { ax: 'k', dir: -1, facet: '抜け漏れ', t: {
+    self:  '持ち物や連絡を忘れていて、後から気づくことがある',
+    other: 'この人は、持ち物や連絡を忘れていることがある' } },
+  { ax: 'k', dir: 1, facet: '事前準備', t: {
+    self:  '予定が決まったら、早めに段取りを済ませておく',
+    other: 'この人は、予定が決まると早めに段取りを済ませておく' } },
+  { ax: 'k', dir: -1, facet: '管理の粒度', t: {
+    self:  'お金や予定の管理は、だいたい把握できていれば十分だと思う',
+    other: 'この人は、お金や予定の管理をだいたいで済ませるほうに見える' } }
 ];
 
-const BAND_Y = ['強い陰キャ', 'やや陰キャ', 'やや陽キャ', '強い陽キャ'];
-const BAND_O = ['強い冷キャ', 'やや冷キャ', 'やや温キャ', '強い温キャ'];
+const AXES = [
+  { id: 'y', name: '陽陰', hi: '陽', lo: '陰' },
+  { id: 'o', name: '温冷', hi: '温', lo: '冷' },
+  { id: 'k', name: '堅緩', hi: '堅', lo: '緩' }
+];
+const BANDS = {
+  y: ['強い陰キャ', 'やや陰キャ', 'やや陽キャ', '強い陽キャ'],
+  o: ['強い冷キャ', 'やや冷キャ', 'やや温キャ', '強い温キャ'],
+  k: ['強い緩キャ', 'やや緩キャ', 'やや堅キャ', '強い堅キャ']
+};
 
-/* 汎用の役割（一般向け・他己評価で表示） */
-const ROLES_GENERAL = ['リーダー', 'まとめ役', '参謀', '専門職', '支援'];
-/* ディライトの役職（ディライト版でのみ表示）
-   副代表は「仕切り役(冷)」と「盛り上げ役(陽)」の2枠あるが、
-   表示は `副代表` の1つに畳む。dr には内訳を残しておく。 */
-const ROLES_DELIGHT = ['代表', '副代表', 'イベント係', '施設係', '会計係'];
-const roleHit = (list, label) => list.some(x => x.split(':')[0] === label);
+/* ===== 役職 =====
+   適性は3軸の重み付き合計で出す。設問は性格を聞き、役職は結果から導く。
+   副代表は「仕切り役(冷)」と「盛り上げ役(温)」の2枠あるが、
+   表示は `副代表` の1つに畳む（高いほうを採用）。 */
+const ROLE_LABELS = ['代表', '副代表', 'イベント係', '施設係', '会計係'];
+const ROLES = [
+  { label: '代表',       kind: '',           w: { y: 3, o: -2, k: 2 },
+    d: 'チームの代表として全体を俯瞰し、決める役。前に立てて、情に流されず、決めたことをやり切れる位置です。' },
+  { label: '副代表',     kind: '仕切り役',   w: { y: 2, o: -3, k: 3 },
+    d: '実行部隊の仕切り側。練習の中身と時間を締められる位置です。' },
+  { label: '副代表',     kind: '盛り上げ役', w: { y: 3, o: 3,  k: 1 },
+    d: '実行部隊の盛り上げ側。場を明るくして、人が離れないようにする位置です。' },
+  { label: 'イベント係', kind: '',           w: { y: 2, o: 3,  k: 2 },
+    d: '皆が楽しめるイベントを企画して運営する役。誰が楽しめていないかに気づける温かさと、段取り力の両方が要ります。' },
+  { label: '施設係',     kind: '',           w: { y: -1, o: 0, k: 4 },
+    d: '毎月の体育館予約を担う役。欠けると活動が成り立たない要の位置で、必要なのは目立つ力ではなく、淡々と続ける力です。' },
+  { label: '会計係',     kind: '',           w: { y: -1, o: -3, k: 4 },
+    d: '会費と収支を管理する役。相手が誰でも同じ基準で徴収できる冷静さと、数字を合わせ切る几帳面さが要ります。' }
+];
 
-/* TYPES[陽陰バンド][温冷バンド]  0=強い陰/冷 … 3=強い陽/温
-   r  = 汎用の役割 / dr = ディライトの役職 */
+/* 16タイプ（陽陰 × 温冷）。エンタメとしての人物像で、役職適性とは別軸 */
 const TYPES = [
   [ /* 強い陰 */
-    { n:'完全論理体',      c:'感情の外側で考える人',   r:['専門職'], dr:['会計係'],
+    { n:'完全論理体',      c:'感情の外側で考える人',
       d:'ぶれない判断基準を持ち、周囲が揺れているときほど価値が出ます。伝え方に一手間かけると、その正しい判断が実際に通るようになります。' },
-    { n:'孤高の研究者',    c:'一人で深く潜る人',       r:['専門職'], dr:['施設係'],
+    { n:'孤高の研究者',    c:'一人で深く潜る人',
       d:'集団の力学より、対象そのものへの興味が勝つタイプ。人脈ではなく専門性で信頼を積み上げていきます。' },
-    { n:'一途な夢想家',    c:'自分の世界を持っている人', r:['支援'], dr:['施設係'],
+    { n:'一途な夢想家',    c:'自分の世界を持っている人',
       d:'広く浅くではなく、狭く深く関わります。数は多くないぶん、合う相手との結びつきは誰よりも強くなります。' },
-    { n:'秘めた博愛主義者', c:'静かに気にかけている人', r:['支援'], dr:['施設係'],
+    { n:'秘めた博愛主義者', c:'静かに気にかけている人',
       d:'表には出しませんが、人のことをよく考えています。伝えないと伝わらないので、言葉にする回数を少し増やすだけで印象が変わります。' }
   ],
   [ /* やや陰 */
-    { n:'寡黙な観測者',    c:'見えている人',           r:['参謀'], dr:['会計係'],
+    { n:'寡黙な観測者',    c:'見えている人',
       d:'発言は少なくても、場の力学を正確に把握しています。聞かれたときに出す一言の精度が高く、そこで評価が決まります。' },
-    { n:'職人肌の分析家',  c:'静かに正解を出す人',     r:['参謀'], dr:['会計係','施設係'],
+    { n:'職人肌の分析家',  c:'静かに正解を出す人',
       d:'表に出ないところで筋道を立てるのが得意。前に立つより、決める人の隣で判断材料を作る位置で最も活きます。' },
-    { n:'静かな癒し系',    c:'いるだけで空気が緩む人', r:['まとめ役'], dr:['施設係','イベント係'],
+    { n:'静かな癒し系',    c:'いるだけで空気が緩む人',
       d:'主張は強くありませんが、その場にいる安心感が集団を支えています。存在そのものが機能しているタイプです。' },
-    { n:'縁の下の聞き上手', c:'一対一で本音を引き出す人', r:['まとめ役'], dr:['イベント係'],
-      d:'大人数では目立ちませんが、1対1での傾聴力は随一。不満が爆発する前に拾えます。まとめ役として最も過小評価されているタイプです。' }
+    { n:'縁の下の聞き上手', c:'一対一で本音を引き出す人',
+      d:'大人数では目立ちませんが、1対1での傾聴力は随一。不満が爆発する前に拾えます。最も過小評価されているタイプです。' }
   ],
   [ /* やや陽 */
-    { n:'クールな仕切り役', c:'淡々と回す人',          r:['リーダー'], dr:['副代表:仕切り','会計係'],
+    { n:'クールな仕切り役', c:'淡々と回す人',
       d:'感情の起伏に左右されず、決めるべきことを決められます。冷たいと誤解されやすいので、判断の意図を言葉にすると評価が変わります。' },
-    { n:'切れ者の交渉人',  c:'筋を通しながら通す人',   r:['リーダー','まとめ役'], dr:['代表','副代表:仕切り'],
-      d:'論理で組み立てながら、相手の面子も潰さない。リーダーとまとめ役を一人で兼ねられる希少なタイプです。' },
-    { n:'愛されいじられ役', c:'誰とでも組める人',      r:['リーダー','まとめ役'], dr:['副代表:盛り上げ','イベント係'],
+    { n:'切れ者の交渉人',  c:'筋を通しながら通す人',
+      d:'論理で組み立てながら、相手の面子も潰さない。前に立つ役とまとめる役を一人で兼ねられる希少なタイプです。' },
+    { n:'愛されいじられ役', c:'誰とでも組める人',
       d:'極端さがないぶん、どのタイプの相手とも噛み合います。目立ちませんが、組織が大きくなるほど効いてくる万能型です。' },
-    { n:'世話焼き幹事',    c:'気づいたら手を挙げている人', r:['まとめ役'], dr:['イベント係'],
+    { n:'世話焼き幹事',    c:'気づいたら手を挙げている人',
       d:'程よい社交性と強い配慮で、集団の潤滑油になります。頼まれごとを断りにくく、抱え込みやすいのが弱点です。' }
   ],
   [ /* 強い陽 */
-    { n:'カリスマ司令塔',  c:'決める人',               r:['リーダー'], dr:['代表'],
-      d:'迷いのない判断と発信力で場を引っ張ります。危機や立て直しでは最強クラスですが、平時に長く続くと周囲が消耗します。温かいまとめ役を横に置くと本領が出ます。' },
-    { n:'陽気な策士',      c:'笑いながら決めていく人', r:['リーダー'], dr:['代表'],
+    { n:'カリスマ司令塔',  c:'決める人',
+      d:'迷いのない判断と発信力で場を引っ張ります。危機や立て直しでは最強クラスですが、平時に長く続くと周囲が消耗します。温かい人を横に置くと本領が出ます。' },
+    { n:'陽気な策士',      c:'笑いながら決めていく人',
       d:'巻き込む力と、情に流されない判断力の両方を持っています。全員にとって最善ではない選択でも、説明して通せるタイプです。' },
-    { n:'ムードメーカー',  c:'空気が重くなると動く人', r:['まとめ役'], dr:['副代表:盛り上げ'],
+    { n:'ムードメーカー',  c:'空気が重くなると動く人',
       d:'沈黙や気まずさに人一倍敏感で、気づけば場を回しています。盛り上げは得意な一方、対立の調停より雰囲気の維持に流れやすい面があります。' },
-    { n:'太陽キャ',        c:'その場の温度を上げる人', r:['まとめ役'], dr:['副代表:盛り上げ','イベント係'],
+    { n:'太陽キャ',        c:'その場の温度を上げる人',
       d:'場を明るくしながら、一人ひとりの機嫌まで見ています。人が自然と集まってくるぶん、気を配りすぎて自分の消耗に気づきにくいので注意。' }
   ]
 ];
 
-const ROLE_NOTE = 'この結果は「なりやすさ」であって「うまくやれるか」ではありません。外向性はリーダーに選ばれやすさとは相関しますが、成果との相関は弱いことが知られています。陰側のタイプは向いていないのではなく、候補に挙がりにくいだけ、という場合が多くあります。';
+const ROLE_NOTE = 'この結果は「なりやすさ」であって「うまくやれるか」ではありません。外向性はリーダーに選ばれやすさとは相関しますが、成果との相関は弱いことが知られています。適性が低く出た役職は向いていないのではなく、候補に挙がりにくいだけ、という場合が多くあります。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
-/* ===== 保存（localStorage が使えない環境では自動でメモリに退避） =====
-   形: { self: { general:{s,at}, delight:{s,at} }, peers: [ {nick,s,at} ] } */
+const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
+
+/* ===== 保存 =====
+   形: { self: {s,at} | null, peers: [ {nick,s,at} ] }
+   v1（2軸12問）とは設問構成が非互換なので、キーを分けて読まない */
 const store = (() => {
-  const KEY = 'nanimonoda.v1';
-  const OLD = ['wasser.v2', 'kishitsu-zu.v2'];   // 旧称時代のキー
+  const KEY = 'nanimonoda.v2';
   let mem = null;
   let ok = false;
   try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); ok = true; } catch (e) { ok = false; }
-
   const shape = o => ({
-    self: (o && o.self) || {},
-    peers: (o && Array.isArray(o.peers)) ? o.peers : []
+    self: (o && o.self) || null,
+    peers: (o && Array.isArray(o.peers)) ? o.peers.slice(-PEER_MAX) : []
   });
-
-  /* 改名前の記録を一度だけ移す。旧形式は self の中身がそのまま入っていた */
-  try {
-    if (ok && !localStorage.getItem(KEY)) {
-      for (const k of OLD) {
-        const raw = localStorage.getItem(k);
-        if (!raw) continue;
-        localStorage.setItem(KEY, JSON.stringify({ self: JSON.parse(raw), peers: [] }));
-        OLD.forEach(x => localStorage.removeItem(x));
-        break;
-      }
-    }
-  } catch (e) {}
-
   return {
     load() {
       try { return shape(JSON.parse((ok ? localStorage.getItem(KEY) : mem) || '{}')); }
@@ -163,9 +180,7 @@ const store = (() => {
   };
 })();
 
-/* ===== 配色（自動 / ライト / ダーク） =====
-   auto は OS の設定に従う。data-theme を外すと CSS 側の
-   prefers-color-scheme のブロックが効く仕組み。 */
+/* ===== 配色（自動 / ライト / ダーク） ===== */
 const THEMES = [
   { id: 'auto',  icon: '◐', label: '配色: 自動' },
   { id: 'light', icon: '○', label: '配色: ライト' },
@@ -174,7 +189,7 @@ const THEMES = [
 const theme = (() => {
   const KEY = 'nanimonoda.theme';
   let cur = 'auto';
-  try { cur = localStorage.getItem(KEY) || localStorage.getItem('wasser.theme') || 'auto'; } catch (e) {}
+  try { cur = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
   const apply = () => {
     const t = THEMES.find(x => x.id === cur) || THEMES[0];
     if (cur === 'auto') delete document.documentElement.dataset.theme;
@@ -196,43 +211,63 @@ const theme = (() => {
 /* ===== 採点 ===== */
 function band(ratio) {
   if (ratio <= 0.25) return 0;
-  if (ratio <= 0.50) return 1;   // 50%ちょうどは陰側・冷側に含める
+  if (ratio <= 0.50) return 1;   // 50%ちょうどは陰側・冷側・緩側に含める
   if (ratio <= 0.75) return 2;
   return 3;
 }
 
 function score(answers) {
   const out = {};
-  ['y', 'o'].forEach(ax => {
-    const list = QS.map((q, i) => ({ q, i })).filter(x => x.q.ax === ax);
-    const sum = list.reduce((a, x) => a + (x.q.dir === 1 ? answers[x.i] : 3 - answers[x.i]), 0);
+  AXES.forEach(a => {
+    const list = QS.map((q, i) => ({ q, i })).filter(x => x.q.ax === a.id);
+    const sum = list.reduce((acc, x) => acc + (x.q.dir === 1 ? answers[x.i] : 3 - answers[x.i]), 0);
     const max = list.length * 3;
-    out[ax] = { n: list.length, sum, max, ratio: sum / max, band: band(sum / max) };
+    out[a.id] = { n: list.length, sum, max, ratio: sum / max, band: band(sum / max) };
   });
   return out;
 }
 
 const typeOf = s => TYPES[s.y.band][s.o.band];
 
-/* ===== 共有リンク =====
-   12問 × 2bit = 3バイト + ニックネームのUTF-8 を base64url にして
-   URLのフラグメントに載せる。# 以降はサーバーに送信されないため、
-   「保存はローカルのみ」という原則を保ったまま相手に渡せる。 */
-const LINK_V = '1';
-const NICK_MAX = 20;
+/* 役職適性。各軸を -1〜+1 に直して重み付き合計し、0〜100 に均す */
+function fitOf(s, w) {
+  let raw = 0, max = 0;
+  AXES.forEach(a => {
+    const wt = w[a.id] || 0;
+    if (!wt) return;
+    raw += wt * (s[a.id].ratio * 2 - 1);
+    max += Math.abs(wt);
+  });
+  return max ? Math.round(((raw / max + 1) / 2) * 100) : 50;
+}
 
-function b64uEnc(bytes) {
+/* 表示用。副代表は2枠を高いほうに畳んでから、適性の高い順に並べる */
+function roleFits(s) {
+  const all = ROLES.map(r => ({ ...r, v: fitOf(s, r.w) }));
+  return ROLE_LABELS
+    .map(label => all.filter(r => r.label === label)
+                     .reduce((a, b) => (b.v > a.v ? b : a)))
+    .sort((a, b) => b.v - a.v);
+}
+
+/* ===== 共有リンク =====
+   18問 × 2bit = 5バイト + ニックネームのUTF-8 を base64url にして
+   URLのフラグメントに載せる。# 以降はサーバーに送信されない。
+   設問構成を変えたら必ず LINK_V を上げること（古いリンクの誤読を防ぐ） */
+const LINK_V = '2';
+const NICK_MAX = 20;
+const PACK_BYTES = Math.ceil(QS.length / 4);
+
+const b64uEnc = bytes => {
   let s = '';
   bytes.forEach(b => { s += String.fromCharCode(b); });
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-function b64uDec(str) {
-  const s = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(s, c => c.charCodeAt(0));
-}
+};
+const b64uDec = str => Uint8Array.from(
+  atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 
 function packAnswers(a) {
-  const b = new Uint8Array(3);
+  const b = new Uint8Array(PACK_BYTES);
   for (let i = 0; i < QS.length; i++) b[i >> 2] |= (a[i] & 3) << ((i % 4) * 2);
   return b;
 }
@@ -244,9 +279,9 @@ function unpackAnswers(b) {
 
 function makeLink(nick, answers) {
   const name = new TextEncoder().encode(nick.slice(0, NICK_MAX));
-  const blob = new Uint8Array(3 + name.length);
+  const blob = new Uint8Array(PACK_BYTES + name.length);
   blob.set(packAnswers(answers), 0);
-  blob.set(name, 3);
+  blob.set(name, PACK_BYTES);
   const base = location.origin === 'null'
     ? location.href.split('#')[0]
     : location.origin + location.pathname;
@@ -258,22 +293,29 @@ function readLink(hash) {
   if (!m || m[1] !== LINK_V) return null;
   try {
     const b = b64uDec(m[2]);
-    if (b.length < 3) return null;
-    const answers = unpackAnswers(b.subarray(0, 3));
-    const nick = new TextDecoder().decode(b.subarray(3)).trim().slice(0, NICK_MAX);
+    if (b.length < PACK_BYTES) return null;
+    const answers = unpackAnswers(b.subarray(0, PACK_BYTES));
+    const nick = new TextDecoder().decode(b.subarray(PACK_BYTES)).trim().slice(0, NICK_MAX);
     return { nick: nick || '名前なし', s: score(answers), at: Date.now() };
   } catch (e) { return null; }
 }
 
-/* ===== 座標盤 ===== */
-/* 星の位置。暗い配色のときだけ見える（不透明度を --star で殺している） */
+/* 他己評価の総合。軸ごとに素点を平均する */
+function aggregate(peers) {
+  const out = {};
+  AXES.forEach(a => {
+    const max = peers[0].s[a.id].max;
+    const sum = peers.reduce((acc, p) => acc + p.s[a.id].sum, 0) / peers.length;
+    out[a.id] = { n: peers[0].s[a.id].n, sum, max, ratio: sum / max, band: band(sum / max) };
+  });
+  return out;
+}
+
+/* ===== 座標盤（陽陰 × 温冷。堅緩は数値とバーで見せる） ===== */
 const STARS = [[24,40],[58,16],[97,68],[133,28],[176,54],[213,22],[247,86],[275,44],
                [20,124],[68,163],[117,140],[157,193],[195,129],[234,175],[271,146],
                [42,229],[90,265],[145,241],[188,279],[231,243],[277,219]];
 
-/* 盤は面を窪ませた中に置く前提。地の塗りは持たない。
-   色と濃さはすべて CSS変数から引くので、配色の切り替えに自動で追従する。
-   軸の向き: 陽=右 / 陰=左 / 温=上 / 冷=下 */
 function field(id) {
   const edge = [
     ['t', 'warm',  '0', '0', '0', '1'],   // 上 = 温
@@ -320,7 +362,6 @@ function field(id) {
 const px = y => y.ratio * 250 + 25;        // 陽陰: 右=陽
 const py = o => (1 - o.ratio) * 250 + 25;  // 温冷: 上=温
 
-/* 点も面と同じ理屈で浮かせる。左上に明るい縁、右下に暗い縁 */
 function dot(x, y, color, r) {
   return `
     <circle cx="${x}" cy="${y}" r="${r * 2.7}" fill="none" stroke="${color}" stroke-opacity=".2"/>
@@ -330,7 +371,7 @@ function dot(x, y, color, r) {
     <circle cx="${x}" cy="${y}" r="${r * .52}" fill="${color}"/>`;
 }
 
-const COL = { general: 'var(--cat-a)', delight: 'var(--cat-b)', peer: 'var(--cat-c)' };
+const COL = { self: 'var(--cat-a)', peer: 'var(--cat-c)' };
 
 function drawSingle(s, color) {
   const x = px(s.y), y = py(s.o);
@@ -345,22 +386,27 @@ function drawSingle(s, color) {
   </svg>`;
 }
 
-/* items: [{ label, color, s }] */
+/* items: [{ label, color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ） */
 function drawCompare(items) {
   const pts = items.map(it => ({ ...it, x: px(it.s.y), y: py(it.s.o) }));
+  const main = pts.filter(p => !p.faint);
+  const line = main.length > 1
+    ? `<polyline points="${main.map(p => `${p.x},${p.y}`).join(' ')}" fill="none"
+         stroke="var(--ink)" stroke-opacity=".3" stroke-width="1.4" stroke-dasharray="5 4"/>` : '';
   const placed = [];
-  const labels = pts.map(p => {
-    /* 先に置いたラベルとぶつかるなら点の下へ逃がす */
-    const up = Math.max(p.y - 18, 32), down = Math.min(p.y + 28, 292);
-    const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 66);
-    const ly = hits(up) ? down : up;
-    placed.push({ x: p.x, y: ly });
-    return `<text class="fx-cat" x="${p.x}" y="${ly}" text-anchor="middle">${esc(p.label)}</text>`;
-  });
-  return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の比較">
+  return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="自己評価と他己評価の比較">
     ${field('b')}
-    ${pts.map(p => dot(p.x, p.y, p.color, 8)).join('')}
-    ${labels.join('')}
+    ${pts.filter(p => p.faint).map(p => `
+      <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.color}" opacity=".42"/>`).join('')}
+    ${line}
+    ${main.map(p => dot(p.x, p.y, p.color, 8)).join('')}
+    ${main.map(p => {
+      const up = Math.max(p.y - 18, 32), down = Math.min(p.y + 28, 292);
+      const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
+      const ly = hits(up) ? down : up;
+      placed.push({ x: p.x, y: ly });
+      return `<text class="fx-cat" x="${p.x}" y="${ly}" text-anchor="middle">${esc(p.label)}</text>`;
+    }).join('')}
   </svg>`;
 }
 
@@ -378,64 +424,55 @@ function show(id) {
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('on');
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200);
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2400);
 }
 
 /* ===== 表紙 ===== */
 function renderHome() {
   const d = store.load();
 
-  $('selflist').innerHTML = SELF_MODES.map((m, i) => {
-    const rec = d.self[m.id];
-    return `<button class="btn card ${rec ? 'done' : ''}" data-open="self:${m.id}">
+  $('menu').innerHTML = MODES.map((m, i) => {
+    const done = m.kind === 'self' && d.self;
+    return `<button class="btn card ${done ? 'done' : ''}" data-mode="${m.id}">
       <span class="dot"></span>
       <span class="no">${String(i + 1).padStart(2, '0')}</span>
       <span class="nm">${m.name}</span>
-      <span class="meta">${rec ? typeOf(rec.s).n : m.hint}</span>
+      <span class="meta">${done ? typeOf(d.self.s).n : m.hint}</span>
     </button>`;
   }).join('');
-
-  const pm = modeOf('peer');
-  $('peerlist').innerHTML = `<button class="btn card" data-start="peer">
-      <span class="dot"></span>
-      <span class="no">03</span>
-      <span class="nm">${pm.name}</span>
-      <span class="meta">${pm.hint}</span>
-    </button>`;
+  document.querySelectorAll('[data-mode]').forEach(b =>
+    b.onclick = () => {
+      const id = b.dataset.mode;
+      if (id === 'self' && store.load().self) showResult('self');
+      else start(id);
+    });
 
   const box = $('inbox');
+  box.hidden = !d.peers.length;
   if (d.peers.length) {
-    box.hidden = false;
+    $('inbox-count').textContent = `${d.peers.length} / ${PEER_MAX}`;
     $('inboxlist').innerHTML = d.peers.map((p, i) => `
-      <button class="btn card done" data-open="peer:${i}">
+      <button class="btn card done" data-peer="${i}">
         <span class="dot c"></span>
         <span class="nm">${esc(p.nick)}</span>
         <span class="meta">${typeOf(p.s).n}</span>
       </button>`).join('');
-  } else {
-    box.hidden = true;
+    document.querySelectorAll('[data-peer]').forEach(b =>
+      b.onclick = () => showResult('peer', +b.dataset.peer));
   }
 
-  document.querySelectorAll('[data-open]').forEach(b =>
-    b.onclick = () => {
-      const [kind, key] = b.dataset.open.split(':');
-      if (kind === 'self' && !store.load().self[key]) start(key);
-      else showResult(kind, kind === 'peer' ? +key : key);
-    });
-  document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => start(b.dataset.start));
-
-  const n = countEntries(d);
+  const ready = d.self && d.peers.length;
   const cb = $('btn-compare');
-  cb.disabled = n < 2;
-  cb.classList.toggle('off', n < 2);
-  cb.classList.toggle('primary', n >= 2);
-  cb.textContent = n < 2 ? `2つ以上そろうと比べられます（${n}/2）` : `結果を並べて見る（${n}件）`;
+  cb.disabled = !ready;
+  cb.classList.toggle('off', !ready);
+  cb.classList.toggle('primary', !!ready);
+  cb.textContent = ready
+    ? `自己評価と他己評価を比べる（${d.peers.length}件）`
+    : (d.self ? '他己評価が届くと比べられます' : 'まず自分を診断してください');
 }
 
-const countEntries = d => Object.keys(d.self).length + d.peers.length;
-
 /* ===== 設問 ===== */
-const ADVANCE_MS = 280;
+const ADVANCE_MS = 260;
 let advTimer = null;
 function cancelAdvance() { clearTimeout(advTimer); advTimer = null; }
 
@@ -466,7 +503,6 @@ function renderQ() {
 function answer(v) {
   if (advTimer) return;               // 移行中の二度押しを弾く
   cur.answers[cur.i] = v;
-  /* 画面を差し替える前に、選んだ選択肢をその場で沈ませる */
   document.querySelectorAll('#opts .opt').forEach(b => {
     const on = +b.dataset.v === v;
     b.classList.toggle('sel', on);
@@ -480,69 +516,65 @@ function answer(v) {
 }
 
 function finish() {
-  const m = modeOf(cur.mode);
-  if (m.kind === 'peer') {
+  if (modeOf(cur.mode).kind === 'peer') {
     pending = { answers: { ...cur.answers }, s: score(cur.answers) };
     return showPeerSend();
   }
   const d = store.load();
-  d.self[cur.mode] = { s: score(cur.answers), at: Date.now() };
+  d.self = { s: score(cur.answers), at: Date.now() };
   store.save(d);
-  showResult('self', cur.mode);
+  showResult('self');
 }
 
-/* ===== 結果 ===== */
-function showResult(kind, key) {
-  const d = store.load();
-  const rec = kind === 'peer' ? d.peers[key] : d.self[key];
-  if (!rec) { renderHome(); return show('s-home'); }
-  const s = rec.s, t = typeOf(s);
-  const isPeer = kind === 'peer';
+/* ===== 表示部品 ===== */
+const readout = (s, exact = true) => AXES.map(a => `
+  <div><div class="k">${a.name}</div><div class="v">${BANDS[a.id][s[a.id].band]}</div>
+    <div class="p">${exact ? `${s[a.id].sum}/${s[a.id].max} · ` : ''}${Math.round(s[a.id].ratio * 100)}%</div></div>`
+).join('');
 
-  $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : `${modeOf(key).name}のあなた`;
+const fitBars = fits => fits.map((f, i) => `
+  <div class="fitrow ${i === 0 ? 'top' : ''}">
+    <span class="fl">${f.label}${f.kind ? `<em>${f.kind}</em>` : ''}</span>
+    <span class="fb"><i style="width:${f.v}%"></i></span>
+    <span class="fv">${f.v}</span>
+  </div>`).join('');
+
+/* ===== 結果 ===== */
+function showResult(kind, idx) {
+  const d = store.load();
+  const rec = kind === 'peer' ? d.peers[idx] : d.self;
+  if (!rec) { renderHome(); return show('s-home'); }
+  const s = rec.s, t = typeOf(s), isPeer = kind === 'peer';
+  const fits = roleFits(s);
+
+  $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
   $('r-name').textContent = t.n;
   $('r-catch').textContent = t.c;
-  $('r-map').innerHTML = drawSingle(s, isPeer ? COL.peer : COL[key]);
+  $('r-map').innerHTML = drawSingle(s, isPeer ? COL.peer : COL.self);
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
-  /* 役職の表示はディライト版だけサークルの係名に差し替える。
-     一般向けと他己評価はサークルと無関係な相手にも使うので汎用のまま */
-  const isDelight = !isPeer && key === 'delight';
-  const labels = isDelight ? ROLES_DELIGHT : ROLES_GENERAL;
-  const mine   = isDelight ? t.dr : t.r;
-  $('r-roles').innerHTML = labels
-    .map(r => `<span class="role ${roleHit(mine, r) ? 'hi' : ''}">${r}</span>`).join('');
+  $('r-fit').innerHTML = fitBars(fits);
+  /* 全部低く出た人に、いちばん高いだけの役職を勧めたように読ませない */
+  const head = fits[0].v < 50
+    ? `どの役職も高くは出ませんでした。そのなかで比較的近いのは${fits[0].label}${fits[0].kind ? `（${fits[0].kind}）` : ''}です。`
+    : `${fits[0].label}${fits[0].kind ? `（${fits[0].kind}）` : ''} — `;
+  $('r-fittop').textContent = head + fits[0].d;
   $('r-note').textContent = isPeer ? PEER_NOTE : ROLE_NOTE;
 
   $('btn-share').hidden = isPeer;
   $('btn-again').hidden = isPeer;
   if (!isPeer) {
-    $('btn-share').onclick = () => shareResult(modeOf(key).name, t, s);
-    $('btn-again').onclick = () => start(key);
+    $('btn-share').onclick = () => shareResult(t, s, fits);
+    $('btn-again').onclick = () => start('self');
   }
-
-  const n = countEntries(d);
   const bf = $('btn-front');
-  bf.hidden = n < 2;
+  bf.hidden = !(d.self && d.peers.length);
   bf.onclick = showCompare;
-
-  /* まだ受けていない自己診断があれば、そちらへの導線を出す */
-  const rest = SELF_MODES.find(m => !d.self[m.id]);
-  const bo = $('btn-other');
-  bo.textContent = rest ? `${rest.name}も受ける` : '表紙にもどる';
-  bo.onclick = rest ? () => start(rest.id) : goHome;
-
+  $('btn-other').onclick = goHome;
   show('s-result');
 }
 
-const readout = s => `
-  <div><div class="k">陽陰</div><div class="v">${BAND_Y[s.y.band]}</div>
-    <div class="p">${s.y.sum}/${s.y.max} · ${Math.round(s.y.ratio * 100)}%</div></div>
-  <div><div class="k">温冷</div><div class="v">${BAND_O[s.o.band]}</div>
-    <div class="p">${s.o.sum}/${s.o.max} · ${Math.round(s.o.ratio * 100)}%</div></div>`;
-
 /* ===== 共有 ===== */
-/* Web Share が使えれば OS の共有シートを開き、無ければクリップボードに退避する */
 async function shareOut({ title, text, url }, okMsg) {
   const payload = url ? { title, text, url } : { title, text };
   if (navigator.share) {
@@ -556,10 +588,10 @@ async function shareOut({ title, text, url }, okMsg) {
   } catch (e) { toast('共有できませんでした'); return false; }
 }
 
-function shareResult(modeName, t, s) {
-  const text = `【${modeName}】の私は「${t.n}」\n`
-    + `陽陰 ${BAND_Y[s.y.band]}（${Math.round(s.y.ratio * 100)}%）`
-    + ` / 温冷 ${BAND_O[s.o.band]}（${Math.round(s.o.ratio * 100)}%）\n— 何者だ`;
+function shareResult(t, s, fits) {
+  const text = `私は「${t.n}」\n`
+    + AXES.map(a => `${a.name} ${BANDS[a.id][s[a.id].band]}`).join(' / ')
+    + `\n向いている役職: ${fits[0].label}（${fits[0].v}）\n— 何者だ`;
   shareOut({ title: '何者だ', text }, 'コピーしました');
 }
 
@@ -591,98 +623,53 @@ function showInbox(peer, idx) {
   $('i-note').textContent = PEER_NOTE;
   const d = store.load();
   const bi = $('btn-icompare');
-  if (d.self.general) {
-    bi.textContent = '自分の結果と並べる';
-    bi.onclick = showCompare;
-  } else {
-    bi.textContent = 'まず自分を診断する';
-    bi.onclick = () => start('general');
-  }
+  if (d.self) { bi.textContent = '自分の結果と並べる'; bi.onclick = showCompare; }
+  else { bi.textContent = 'まず自分を診断する'; bi.onclick = () => start('self'); }
   $('btn-idetail').onclick = () => showResult('peer', idx);
   show('s-inbox');
 }
 
-/* ===== 比較 ===== */
-function entries(d) {
-  const out = [];
-  SELF_MODES.forEach(m => {
-    if (d.self[m.id]) out.push({ ref: `self:${m.id}`, label: m.name, short: m.id === 'general' ? '一般' : 'ディライト',
-                                 color: COL[m.id], s: d.self[m.id].s, type: typeOf(d.self[m.id].s).n });
-  });
-  d.peers.forEach((p, i) => out.push({ ref: `peer:${i}`, label: p.nick, short: p.nick,
-                                       color: COL.peer, s: p.s, type: typeOf(p.s).n }));
-  return out;
-}
-
+/* ===== 比較（自己評価 vs 他己評価の総合） ===== */
 function showCompare() {
   const d = store.load();
-  const list = entries(d);
-  if (list.length < 2) return;
+  if (!d.self || !d.peers.length) return;
+  const me = d.self.s, agg = aggregate(d.peers);
+  const n = d.peers.length;
 
-  $('c-map').innerHTML = drawCompare(list.map(e => ({ label: e.short, color: e.color, s: e.s })));
-  $('c-legend').innerHTML = list.map(e => `
-    <button class="btn lg" data-open="${e.ref}">
-      <span class="sw" style="background:${e.color}"></span>
-      <span class="nm">${esc(e.label)}</span>
-      <span class="ty">${e.type}</span>
-      <span class="go">›</span>
-    </button>`).join('');
+  $('c-map').innerHTML = drawCompare([
+    ...d.peers.map(p => ({ label: p.nick, color: COL.peer, s: p.s, faint: true })),
+    { label: '自己評価', color: COL.self, s: me },
+    { label: `他己評価(${n})`, color: COL.peer, s: agg }
+  ]);
+
+  $('c-legend').innerHTML = `
+    <button class="btn lg" data-open="self">
+      <span class="sw" style="background:${COL.self}"></span>
+      <span class="nm">自己評価</span><span class="ty">${typeOf(me).n}</span><span class="go">›</span></button>
+    <div class="lg flat">
+      <span class="sw" style="background:${COL.peer}"></span>
+      <span class="nm">他己評価 総合</span><span class="ty">${typeOf(agg).n}（${n}件の平均）</span></div>
+    ${d.peers.map((p, i) => `
+    <button class="btn lg sub" data-open="peer:${i}">
+      <span class="sw" style="background:${COL.peer};opacity:.5"></span>
+      <span class="nm">${esc(p.nick)}</span><span class="ty">${typeOf(p.s).n}</span><span class="go">›</span></button>`).join('')}`;
   document.querySelectorAll('#c-legend [data-open]').forEach(b =>
     b.onclick = () => {
       const [kind, key] = b.dataset.open.split(':');
-      showResult(kind, kind === 'peer' ? +key : key);
+      showResult(kind, kind === 'peer' ? +key : undefined);
     });
 
-  const cards = [];
-  if (d.self.general && d.self.delight) cards.push(gapSelf(d.self.general.s, d.self.delight.s));
-  if (d.self.general && d.peers.length)  cards.push(gapPeer(d.self.general.s, d.peers));
-  $('c-cards').innerHTML = cards.join('');
+  $('c-readout').innerHTML = readout(agg, false);
+  $('c-cards').innerHTML = gapCard(me, agg, n) + fitCompare(me, agg);
   show('s-compare');
 }
 
 const sign = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v);
 
-function deltaRows(rows) {
-  return `<div class="delta">${rows.map(r => `
-    <div><span class="dk">${r.k}</span>
-      <span class="dv">${r.a}% → ${r.b}% <b>${sign(r.b - r.a)}</b></span></div>`).join('')}</div>`;
-}
-
-/* 普段の自分 vs サークルでの自分 */
-function gapSelf(g, dl) {
-  const dy = Math.round((dl.y.ratio - g.y.ratio) * 100);
+function gapCard(me, agg, n) {
+  const dy = Math.round((agg.y.ratio - me.y.ratio) * 100);
   const abs = Math.abs(dy), open = dy >= 0;
-  let verdict, desc;
-  if (abs < 15) {
-    verdict = 'ほとんど差がない';
-    desc = '普段の自分と、ディライトにいるときの自分がほぼ同じです。場によって自分を作り替えないぶん一貫していて信頼されやすい反面、合わない場では消耗しやすくなります。';
-  } else if (abs < 35) {
-    verdict = 'ゆるやかな差';
-    desc = open
-      ? 'ディライトでは普段より少し外に開いています。無理のない範囲の調整で、切り替えの負担は小さいはずです。'
-      : 'ディライトでは普段より少し内に寄っています。意識的に抑えているというより、場の役割に自然と収まっている状態に近そうです。';
-  } else {
-    verdict = 'はっきりした差';
-    desc = open
-      ? 'ディライトでの自分と普段の自分は、別人といっていい差があります。サークルで前に出られる器用さがある一方、切り替えのコストは確実にかかっているので、消耗の自覚は持っておいたほうがよさそうです。'
-      : '普段よりディライトでかなり内に寄っています。サークルでの立ち位置が本来の自分と噛み合っていない可能性があります。役割のほうを見直す余地があるかもしれません。';
-  }
-  return `<div class="card-x">
-    <div class="k">普段とディライトの差 — 陽陰軸 ${abs}pt</div>
-    <div class="v">${verdict}</div><div class="d">${desc}</div>
-    ${deltaRows([
-      { k: '陽陰', a: Math.round(g.y.ratio * 100), b: Math.round(dl.y.ratio * 100) },
-      { k: '温冷', a: Math.round(g.o.ratio * 100), b: Math.round(dl.o.ratio * 100) }
-    ])}</div>`;
-}
-
-/* 自己評価 vs 他己評価 */
-function gapPeer(g, peers) {
-  const avg = ax => peers.reduce((a, p) => a + p.s[ax].ratio, 0) / peers.length;
-  const py2 = avg('y'), po2 = avg('o');
-  const dy = Math.round((py2 - g.y.ratio) * 100);
-  const abs = Math.abs(dy), open = dy >= 0;
-  const who = peers.length === 1 ? esc(peers[0].nick) : `他己評価${peers.length}件の平均`;
+  const who = n === 1 ? '相手' : `${n}人の平均`;
   let verdict, desc;
   if (abs < 15) {
     verdict = '見え方はほぼ一致';
@@ -701,11 +688,27 @@ function gapPeer(g, peers) {
   return `<div class="card-x">
     <div class="k">自己評価と他己評価の差 — 陽陰軸 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
-    ${deltaRows([
-      { k: '陽陰', a: Math.round(g.y.ratio * 100), b: Math.round(py2 * 100) },
-      { k: '温冷', a: Math.round(g.o.ratio * 100), b: Math.round(po2 * 100) }
-    ])}
+    <div class="delta">${AXES.map(a => `
+      <div><span class="dk">${a.name}</span>
+        <span class="dv">自己 ${Math.round(me[a.id].ratio * 100)}% → 他己 ${Math.round(agg[a.id].ratio * 100)}%
+          <b>${sign(Math.round((agg[a.id].ratio - me[a.id].ratio) * 100))}</b></span></div>`).join('')}</div>
     <p class="sub-note">${PEER_NOTE}</p></div>`;
+}
+
+function fitCompare(me, agg) {
+  const a = roleFits(me), b = roleFits(agg);
+  const same = a[0].label === b[0].label;
+  return `<div class="card-x">
+    <div class="k">向いている役職の見え方</div>
+    <div class="v">${same ? '自他で一致' : '自他でずれ'}</div>
+    <div class="d">${same
+      ? `自分から見ても周りから見ても、最も向いているのは<b>${a[0].label}</b>でした。ここが一致しているのは、その役を任されたときに摩擦が起きにくいという意味です。`
+      : `自分では<b>${a[0].label}</b>が最も高く出ましたが、周りからは<b>${b[0].label}</b>に見えています。どちらが正しいという話ではなく、<b>引き受ける前に擦り合わせておくべき差</b>です。`}</div>
+    <div class="delta">${ROLE_LABELS.map(label => {
+      const x = a.find(r => r.label === label), y = b.find(r => r.label === label);
+      return `<div><span class="dk">${label}</span>
+        <span class="dv">自己 ${x.v} → 他己 ${y.v} <b>${sign(y.v - x.v)}</b></span></div>`;
+    }).join('')}</div></div>`;
 }
 
 /* ===== イベント ===== */
@@ -719,7 +722,7 @@ $('btn-phome').onclick = goHome;
 $('btn-ihome').onclick = goHome;
 $('btn-theme').onclick = () => toast(theme.next().label);
 $('btn-reset').onclick = () => {
-  store.save({ self: {}, peers: [] }); renderHome(); toast('記録を消しました');
+  store.save({ self: null, peers: [] }); renderHome(); toast('記録を消しました');
 };
 
 $('btn-psend').onclick = async () => {
@@ -751,15 +754,20 @@ function boot() {
   if (got) {
     const d = store.load();
     /* 同じ人から同じ内容が二重に入らないようにする */
-    const same = d.peers.findIndex(p => p.nick === got.nick
-      && p.s.y.sum === got.s.y.sum && p.s.o.sum === got.s.o.sum);
-    let idx;
-    if (same >= 0) { idx = same; }
-    else { d.peers.push(got); idx = d.peers.length - 1; store.save(d); }
-    /* 再読み込みで二重に取り込まないようフラグメントを落とす */
+    let idx = d.peers.findIndex(p => p.nick === got.nick
+      && AXES.every(a => p.s[a.id].sum === got.s[a.id].sum));
+    let full = false;
+    if (idx < 0) {
+      d.peers.push(got);
+      if (d.peers.length > PEER_MAX) { d.peers = d.peers.slice(-PEER_MAX); full = true; }
+      idx = d.peers.length - 1;
+      store.save(d);
+    }
     history.replaceState(null, '', location.pathname + location.search);
     renderHome();
-    return showInbox(got, idx);
+    showInbox(got, idx);
+    if (full) toast(`他己評価は${PEER_MAX}件までです。古いものから外しました`);
+    return;
   }
   renderHome();
 }
