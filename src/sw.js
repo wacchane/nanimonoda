@@ -1,5 +1,5 @@
 // 配信ファイルを変更したら必ずこの番号を上げる（上げないと古い版がキャッシュから出続ける）
-const CACHE = 'nanimonoda-v7';
+const CACHE = 'nanimonoda-v8';
 const ASSETS = ['./', './index.html', './app.js', './manifest.webmanifest',
                 './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 

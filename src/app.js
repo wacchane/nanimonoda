@@ -362,9 +362,25 @@ function field(id) {
 const px = y => y.ratio * 250 + 25;        // 陽陰: 右=陽
 const py = o => (1 - o.ratio) * 250 + 25;  // 温冷: 上=温
 
-function dot(x, y, color, r) {
+/* 第3軸（堅緩）は点のまわりのリングの埋まり具合で出す。
+   pathLength="100" で円周を100に正規化しているので、割合をそのまま dasharray に渡せる。
+   上（12時）から時計回りに埋まるよう -90度回している。 */
+function ring(x, y, R, color, ratio) {
+  const p = Math.max(0, Math.min(1, ratio)) * 100;
   return `
-    <circle cx="${x}" cy="${y}" r="${r * 2.7}" fill="none" stroke="${color}" stroke-opacity=".2"/>
+    <circle cx="${x}" cy="${y}" r="${R}" fill="none"
+            stroke="var(--ink)" stroke-opacity=".24" stroke-width="2.4"/>
+    <circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="${color}" stroke-width="2.4"
+            stroke-linecap="round" pathLength="100" stroke-dasharray="${p} 100"
+            transform="rotate(-90 ${x} ${y})"/>`;
+}
+
+/* k を渡すと堅緩のリングが付く。渡さなければ従来どおりの薄い輪 */
+function dot(x, y, color, r, k) {
+  const halo = k === undefined
+    ? `<circle cx="${x}" cy="${y}" r="${r * 2.7}" fill="none" stroke="${color}" stroke-opacity=".2"/>`
+    : ring(x, y, r * 2.4, color, k);
+  return `${halo}
     <circle cx="${x + 1.6}" cy="${y + 1.6}" r="${r}" fill="var(--sd)"/>
     <circle cx="${x - 1.6}" cy="${y - 1.6}" r="${r}" fill="var(--hl)"/>
     <circle cx="${x}" cy="${y}" r="${r}" fill="var(--plate)"/>
@@ -377,7 +393,7 @@ function drawSingle(s, color) {
   const x = px(s.y), y = py(s.o);
   return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
     ${field('a')}
-    <g class="pt">${dot(x, y, color, 9)}</g>
+    <g class="pt">${dot(x, y, color, 9, s.k.ratio)}</g>
     <style>
       .pt{animation:pop .8s cubic-bezier(.22,.61,.36,1) both}
       @keyframes pop{from{opacity:0;transform:scale(.55);transform-origin:${x}px ${y}px}to{opacity:1;transform:none}}
@@ -399,9 +415,10 @@ function drawCompare(items) {
     ${pts.filter(p => p.faint).map(p => `
       <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.color}" opacity=".42"/>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, 8)).join('')}
+    ${main.map(p => dot(p.x, p.y, p.color, 8, p.s.k.ratio)).join('')}
     ${main.map(p => {
-      const up = Math.max(p.y - 18, 32), down = Math.min(p.y + 28, 292);
+      /* リングのぶんラベルを外に逃がす */
+      const up = Math.max(p.y - 28, 32), down = Math.min(p.y + 36, 292);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
       const ly = hits(up) ? down : up;
       placed.push({ x: p.x, y: ly });
