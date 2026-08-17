@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>何者だ — 2軸16タイプの性格診断</title>
+<meta name="description" content="陽キャ⇔陰キャ、温キャ⇔冷キャの2軸で、あなたを座標上の1点として示す性格診断。自己評価と他己評価のずれも見られます。">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="何者だ">
+<style>
+/* ===========================================================
+   配色トークン
+   ライト = 白背景 / ダーク = ミッドナイトブルー背景
+   影は必ず「明るい側が左上・暗い側が右下」。ここが崩れると
+   面の浮き沈みが読めなくなる。
+   =========================================================== */
+:root{
+  --bg:#FFFFFF;
+  --ink:#12172B;
+  --ink-70:rgba(18,23,43,.68);
+  --ink-45:rgba(18,23,43,.44);
+  --ink-25:rgba(18,23,43,.24);
+
+  --hl:#FFFFFF;
+  --sd:rgba(148,161,190,.36);
+  --sd-soft:rgba(148,161,190,.26);
+
+  /* 4軸の色 */
+  --sun:#C8801A;    /* 陽 */
+  --shade:#5A63B8;  /* 陰 */
+  --warm:#D24A42;   /* 温 */
+  --cold:#2A7FD4;   /* 冷 */
+  /* 診断の色 */
+  --cat-a:#218A80;  /* 一般向け */
+  --cat-b:#6A4FD8;  /* ディライト版 */
+  --cat-c:#C43D77;  /* 他己評価 */
+
+  --grid:rgba(18,23,43,.06);
+  --axis:rgba(18,23,43,.13);
+  --wash:.15;       /* 座標盤の四辺の色の濃さ */
+  --wash-blend:normal;
+  --star:0;         /* 星は暗いときだけ出す */
+  --plate:#FFFFFF;
+
+  --r:20px; --r-sm:14px;
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1428;
+    --ink:#E6ECF8;
+    --ink-70:rgba(230,236,248,.66);
+    --ink-45:rgba(230,236,248,.42);
+    --ink-25:rgba(230,236,248,.22);
+
+    --hl:rgba(76,99,158,.30);
+    --sd:rgba(2,5,14,.78);
+    --sd-soft:rgba(2,5,14,.55);
+
+    --sun:#F2B24A;
+    --shade:#98A1EE;
+    --warm:#FF7E73;
+    --cold:#5FB0F5;
+    --cat-a:#4ED6C4;
+    --cat-b:#A48CFF;
+    --cat-c:#FF8FC4;
+
+    --grid:rgba(230,236,248,.055);
+    --axis:rgba(230,236,248,.13);
+    --wash:.20;
+    --wash-blend:screen;   /* 暗い面では色を足し合わせる。重ねても濁らない */
+    --star:1;
+    --plate:#0D1428;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1428;
+  --ink:#E6ECF8;
+  --ink-70:rgba(230,236,248,.66);
+  --ink-45:rgba(230,236,248,.42);
+  --ink-25:rgba(230,236,248,.22);
+
+  --hl:rgba(76,99,158,.30);
+  --sd:rgba(2,5,14,.78);
+  --sd-soft:rgba(2,5,14,.55);
+
+  --sun:#F2B24A;
+  --shade:#98A1EE;
+  --warm:#FF7E73;
+  --cold:#5FB0F5;
+  --cat-a:#4ED6C4;
+  --cat-b:#A48CFF;
+  --cat-c:#FF8FC4;
+
+  --grid:rgba(230,236,248,.055);
+  --axis:rgba(230,236,248,.13);
+  --wash:.20;
+  --wash-blend:screen;
+  --star:1;
+  --plate:#0D1428;
+}
+
+/* 影の合成 — 個別に box-shadow を手書きせず、必ずここを使う */
+:root{
+  --out:    -6px -6px 14px var(--hl),  6px  6px 16px var(--sd);
+  --out-lg:-11px -11px 24px var(--hl), 11px 11px 26px var(--sd);
+  --out-sm: -3px -3px 8px var(--hl),   4px  4px 10px var(--sd-soft);
+  --in:     inset -4px -4px 9px var(--hl), inset 4px 4px 9px var(--sd);
+  --in-deep:inset -7px -7px 15px var(--hl), inset 7px 7px 15px var(--sd);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-weight:300;               /* ヒラギノ角ゴ W3 */
+  font-size:15px;
+  line-height:1.8;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  transition:background .35s var(--ease),color .35s var(--ease);
+}
+/* 星と、遠くの光。ダークのときだけ出る */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  opacity:var(--star);transition:opacity .4s var(--ease);
+  background-repeat:no-repeat;
+  background-image:
+    radial-gradient(58% 42% at 82% 4%,rgba(94,132,232,.15),transparent 72%),
+    radial-gradient(46% 34% at 8% 92%,rgba(128,96,232,.11),transparent 74%),
+    radial-gradient(1.3px 1.3px at 11% 14%,rgba(255,255,255,.9),transparent 60%),
+    radial-gradient(1px 1px at 27% 7%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.4px 1.4px at 44% 21%,rgba(255,255,255,.75),transparent 60%),
+    radial-gradient(1px 1px at 63% 11%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 26%,rgba(255,255,255,.8),transparent 60%),
+    radial-gradient(1px 1px at 7% 38%,rgba(255,255,255,.45),transparent 60%),
+    radial-gradient(1.3px 1.3px at 34% 47%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1px 1px at 71% 41%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.4px 1.4px at 93% 55%,rgba(255,255,255,.7),transparent 60%),
+    radial-gradient(1px 1px at 17% 63%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.2px 1.2px at 52% 71%,rgba(255,255,255,.65),transparent 60%),
+    radial-gradient(1px 1px at 79% 78%,rgba(255,255,255,.45),transparent 60%),
+    radial-gradient(1.3px 1.3px at 24% 88%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1px 1px at 61% 95%,rgba(255,255,255,.4),transparent 60%);
+}
+#app{position:relative;z-index:1;max-width:460px;margin:0 auto;
+  padding:0 20px calc(44px + env(safe-area-inset-bottom))}
+.screen{display:none;padding-top:calc(30px + env(safe-area-inset-top));animation:rise .5s var(--ease) both}
+.screen.on{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ===== 共通パーツ ===== */
+.eyebrow{
+  font-size:11px;letter-spacing:.18em;color:var(--ink-45);
+  display:flex;align-items:center;gap:12px;font-weight:300;
+}
+.eyebrow::after{
+  content:"";flex:1;height:3px;border-radius:3px;
+  box-shadow:inset -1px -1px 2px var(--hl),inset 1px 1px 2px var(--sd);
+}
+.btn{
+  display:block;width:100%;min-height:52px;border:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-weight:300;font-size:15px;padding:15px 18px;
+  border-radius:var(--r);cursor:pointer;text-align:left;
+  box-shadow:var(--out);
+  transition:box-shadow .24s var(--ease),transform .24s var(--ease),color .24s;
+}
+.btn:hover{box-shadow:var(--out-lg)}
+.btn:active{box-shadow:var(--in);transform:scale(.994)}
+.btn:focus-visible{outline:2px solid var(--cat-b);outline-offset:4px}
+.btn[hidden]{display:none}   /* display:block が [hidden] を上書きしてしまうため明示 */
+.btn.off{box-shadow:var(--in);color:var(--ink-45);cursor:default;pointer-events:none}
+.btn.primary{color:var(--cat-b);font-weight:600}
+.ghost{
+  background:none;border:0;color:var(--ink-45);font-family:var(--sans);
+  font-weight:300;font-size:12px;letter-spacing:.1em;cursor:pointer;
+  min-height:44px;padding:11px 10px;border-radius:10px;
+  transition:color .2s,box-shadow .2s;
+}
+.ghost:hover{color:var(--ink-70)}
+.ghost:active{box-shadow:var(--in)}
+.ghost:focus-visible{outline:2px solid var(--cat-b);outline-offset:3px}
+
+/* 配色トグル */
+.tt{
+  position:fixed;z-index:20;
+  top:calc(14px + env(safe-area-inset-top));right:14px;
+  width:44px;height:44px;border:0;border-radius:50%;
+  background:var(--bg);color:var(--ink-45);font-size:15px;line-height:1;
+  cursor:pointer;box-shadow:var(--out-sm);
+  transition:box-shadow .24s var(--ease),color .24s;
+}
+.tt:hover{color:var(--ink-70);box-shadow:var(--out)}
+.tt:active{box-shadow:var(--in)}
+.tt:focus-visible{outline:2px solid var(--cat-b);outline-offset:3px}
+
+/* ===== 表紙 ===== */
+#s-home h1{
+  font-weight:600;font-size:clamp(32px,10vw,40px);line-height:1.2;
+  letter-spacing:.1em;margin:0;padding-right:52px;
+}
+#s-home h1 .sub{
+  display:block;font-size:12px;letter-spacing:.14em;color:var(--ink-45);
+  margin-top:14px;font-weight:300;padding-right:0;
+}
+.dial{display:flex;gap:8px;margin:28px 0 6px}
+.dial div{
+  flex:1;padding:12px 0 10px;text-align:center;border-radius:var(--r-sm);
+  box-shadow:var(--out-sm);font-size:9px;letter-spacing:.04em;color:var(--ink-45);
+}
+.dial b{display:block;font-size:18px;letter-spacing:.08em;margin-bottom:3px;font-weight:600}
+.d-sun b{color:var(--sun)} .d-shade b{color:var(--shade)}
+.d-warm b{color:var(--warm)} .d-cold b{color:var(--cold)}
+.lede{color:var(--ink-70);font-size:13px;margin:24px 0 30px;line-height:1.95}
+
+.cats{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.group{margin-top:26px}
+.card{padding:16px 18px;display:flex;align-items:center;gap:12px}
+.card .no{font-size:10px;color:var(--ink-25);letter-spacing:.08em;min-width:18px}
+.card .nm{font-size:17px;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.card .meta{font-size:10.5px;color:var(--ink-45);margin-left:auto;text-align:right;
+  line-height:1.5;padding-left:8px}
+.card .dot{
+  width:10px;height:10px;border-radius:50%;flex:none;
+  box-shadow:inset -2px -2px 3px var(--hl),inset 2px 2px 4px var(--sd);
+}
+.card.done .dot{background:var(--cat-b);box-shadow:0 0 9px var(--cat-b),var(--out-sm)}
+.card.done .dot.c{background:var(--cat-c);box-shadow:0 0 9px var(--cat-c),var(--out-sm)}
+.card.done .meta{color:var(--ink-70)}
+#btn-compare{margin-top:22px;text-align:center;font-size:12.5px;letter-spacing:.08em}
+#btn-reset{display:block;margin:16px auto 0}
+
+/* ===== 設問 ===== */
+.qbar{display:flex;align-items:center;gap:12px;margin-bottom:6px;padding-right:52px}
+.track{flex:1;height:10px;border-radius:99px;box-shadow:var(--in);position:relative;overflow:hidden}
+.track i{
+  position:absolute;left:0;top:0;bottom:0;width:0;border-radius:99px;
+  background:var(--cat-b);box-shadow:0 0 10px var(--cat-b);
+  transition:width .4s var(--ease);
+}
+.qmeta{font-size:10px;letter-spacing:.06em;color:var(--ink-45);white-space:nowrap}
+.qno{font-size:11.5px;letter-spacing:.16em;color:var(--cat-b);margin:30px 0 12px;font-weight:600}
+.qtext{font-size:clamp(19px,5.6vw,22px);line-height:1.7;letter-spacing:.02em;
+  font-weight:600;min-height:100px}
+.opts{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.opt{display:flex;align-items:center;gap:14px}
+.opt .gauge{
+  display:flex;gap:3px;flex:none;padding:6px 7px;border-radius:9px;
+  box-shadow:inset -2px -2px 4px var(--hl),inset 2px 2px 4px var(--sd);
+}
+.opt .gauge i{width:4px;height:14px;border-radius:2px;background:var(--ink-25);transition:background .2s}
+.opt .gauge i.on{background:var(--cat-b)}
+.opt:hover .gauge i.on{box-shadow:0 0 6px var(--cat-b)}
+/* 選んだ答え。押し込まれた状態＝選択、というこのUIの決まりに合わせる。
+   :hover より後ろに置き、hover でも沈んだままにしておく */
+.opt.sel,.opt.sel:hover{box-shadow:var(--in);color:var(--cat-b);font-weight:600}
+.opt.sel .gauge{box-shadow:none}
+.opt.sel .gauge i.on{background:var(--cat-b);box-shadow:0 0 7px var(--cat-b)}
+.qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+
+/* ===== 結果 ===== */
+.rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
+.rname{font-size:clamp(27px,8vw,34px);line-height:1.3;letter-spacing:.06em;font-weight:600}
+.rcatch{font-size:13px;color:var(--ink-70);margin-top:10px;letter-spacing:.02em}
+
+/* 座標盤は面にはめ込んだ窪みとして置く */
+.mapwrap{margin:28px 0 0;padding:14px;border-radius:26px;box-shadow:var(--in-deep)}
+.map{width:100%;display:block}
+.readout{display:flex;gap:10px;margin-top:16px}
+.readout>div{flex:1;padding:13px 14px;border-radius:var(--r-sm);box-shadow:var(--out-sm)}
+.readout .k{font-size:10px;letter-spacing:.12em;color:var(--ink-45)}
+.readout .v{font-size:15.5px;font-weight:600;letter-spacing:.04em;margin-top:3px}
+.readout .p{font-size:10.5px;color:var(--ink-45);letter-spacing:.03em}
+
+.rbody{margin-top:28px;font-size:14px;line-height:1.95}
+.roles{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.role{
+  font-size:10.5px;letter-spacing:.08em;padding:8px 14px;border-radius:99px;color:var(--ink-45);
+  box-shadow:inset -2px -2px 4px var(--hl),inset 2px 2px 4px var(--sd);
+}
+.role.hi{color:var(--cat-b);font-weight:600;box-shadow:var(--out-sm)}
+.note{
+  font-size:11.5px;color:var(--ink-70);line-height:1.9;margin-top:26px;
+  padding:16px 17px;border-radius:var(--r-sm);box-shadow:var(--in);
+}
+.acts{display:flex;flex-direction:column;gap:10px;margin-top:26px}
+.acts .btn{text-align:center;font-size:12.5px;letter-spacing:.08em}
+
+/* ===== 他人を診断した結果を送る ===== */
+.field{
+  display:block;width:100%;margin-top:8px;border:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-weight:600;font-size:16px;   /* iOSで拡大されないよう16px以上 */
+  padding:15px 18px;border-radius:var(--r);box-shadow:var(--in);
+  letter-spacing:.04em;
+}
+.field::placeholder{color:var(--ink-25);font-weight:300}
+.field:focus{outline:none;box-shadow:var(--in),0 0 0 2px var(--cat-c)}
+.hint{font-size:11.5px;color:var(--ink-45);line-height:1.8;margin-top:10px}
+.linkbox{
+  margin-top:14px;padding:13px 15px;border-radius:var(--r-sm);box-shadow:var(--in);
+  font-size:11px;color:var(--ink-70);word-break:break-all;line-height:1.7;
+}
+
+/* ===== 比較 ===== */
+.legend{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.lg{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-sm)}
+.lg .sw{width:10px;height:10px;flex:none;border-radius:50%}
+.lg .nm{font-size:14px;font-weight:600;letter-spacing:.03em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
+.lg .ty{font-size:11.5px;color:var(--ink-70);margin-left:auto;text-align:right;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg .go{color:var(--ink-25);font-size:16px;flex:none;line-height:1}
+.card-x{margin-top:22px;padding:20px;border-radius:var(--r);box-shadow:var(--out)}
+.card-x .k{font-size:10.5px;letter-spacing:.1em;color:var(--ink-45);line-height:1.7}
+.card-x .v{font-size:22px;font-weight:600;margin:6px 0 10px;letter-spacing:.05em}
+.card-x .d{font-size:12.5px;line-height:1.95;color:var(--ink-70)}
+.delta{display:flex;flex-direction:column;gap:10px;margin-top:18px;
+  padding:14px 16px;border-radius:var(--r-sm);box-shadow:var(--in)}
+.delta>div{display:flex;align-items:baseline;gap:10px}
+.dk{font-size:10px;letter-spacing:.1em;color:var(--ink-45)}
+.dv{font-size:11.5px;color:var(--ink-70);margin-left:auto;white-space:nowrap;letter-spacing:.03em}
+.dv b{color:var(--cat-b);margin-left:5px;font-weight:600}
+.sub-note{font-size:11px;color:var(--ink-45);line-height:1.85;margin-top:16px}
+
+.toast{
+  position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));
+  transform:translate(-50%,20px);opacity:0;max-width:88vw;text-align:center;
+  background:var(--bg);color:var(--ink);font-size:12px;letter-spacing:.06em;
+  padding:13px 22px;border-radius:99px;z-index:99;pointer-events:none;
+  box-shadow:var(--out-lg);
+  transition:opacity .3s,transform .3s var(--ease);
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+@media (max-width:380px){
+  #app{padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+  .dial div{font-size:8.5px} .dial b{font-size:16px}
+  .card{padding:15px 16px;gap:10px}
+  .card .meta{display:none}
+  .mapwrap{padding:11px;border-radius:22px}
+  .readout>div{padding:12px}
+  .card-x{padding:17px}
+}
+</style>
+<script>
+/* 初回描画前に配色を確定させる（一瞬白く光るのを防ぐ） */
+try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('wasser.theme');
+      if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<button class="tt" id="btn-theme" aria-label="配色を切り替える">◐</button>
+<div id="app">
+
+  <!-- 表紙 -->
+  <section id="s-home" class="screen on">
+    <h1>何者だ<span class="sub">2軸16タイプの性格診断</span></h1>
+    <div class="dial">
+      <div class="d-shade"><b>陰</b>内に向く</div>
+      <div class="d-sun"><b>陽</b>外に開く</div>
+      <div class="d-warm"><b>温</b>心で決める</div>
+      <div class="d-cold"><b>冷</b>筋で決める</div>
+    </div>
+    <p class="lede">12問に答えると、そのときのあなたが座標上の1点として置かれます。<br>他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
+
+    <p class="eyebrow">自分を診断する</p>
+    <div class="cats" id="selflist"></div>
+
+    <div class="group">
+      <p class="eyebrow">他人を診断する</p>
+      <div class="cats" id="peerlist"></div>
+    </div>
+
+    <div class="group" id="inbox" hidden>
+      <p class="eyebrow">届いた他己評価</p>
+      <div class="cats" id="inboxlist"></div>
+    </div>
+
+    <button class="btn" id="btn-compare">2つ以上そろうと比べられます</button>
+    <button class="ghost" id="btn-reset">記録をすべて消す</button>
+  </section>
+
+  <!-- 設問 -->
+  <section id="s-quiz" class="screen">
+    <div class="qbar">
+      <div class="track"><i id="bar"></i></div>
+      <span class="qmeta" id="qmeta"></span>
+    </div>
+    <p class="qno" id="qno"></p>
+    <p class="qtext" id="qtext"></p>
+    <div class="opts" id="opts"></div>
+    <div class="qfoot">
+      <button class="ghost" id="btn-back">← 前の設問</button>
+      <button class="ghost" id="btn-quit">やめる</button>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="s-result" class="screen">
+    <p class="rlabel" id="r-cat"></p>
+    <h2 class="rname" id="r-name"></h2>
+    <p class="rcatch" id="r-catch"></p>
+    <div class="mapwrap"><div id="r-map"></div></div>
+    <div class="readout" id="r-readout"></div>
+    <div class="rbody" id="r-body"></div>
+    <div class="roles" id="r-roles"></div>
+    <p class="note" id="r-note"></p>
+    <div class="acts">
+      <button class="btn primary" id="btn-front" hidden>結果を並べて見る</button>
+      <button class="btn" id="btn-share">結果をシェアする</button>
+      <button class="btn" id="btn-other">表紙にもどる</button>
+      <button class="btn" id="btn-again">このカテゴリをやり直す</button>
+    </div>
+  </section>
+
+  <!-- 他人を診断した結果を送る -->
+  <section id="s-peer" class="screen">
+    <p class="rlabel">この人はこう見えました</p>
+    <h2 class="rname" id="p-name"></h2>
+    <p class="rcatch" id="p-catch"></p>
+    <div class="mapwrap"><div id="p-map"></div></div>
+    <p class="rlabel" style="margin-top:26px">あなたのニックネーム</p>
+    <input class="field" id="p-nick" type="text" maxlength="20" placeholder="れい"
+           autocomplete="off" autocapitalize="off" enterkeyhint="done">
+    <p class="hint">相手には「このニックネームから見たあなた」として届きます。</p>
+    <div class="linkbox" id="p-link" hidden></div>
+    <div class="acts">
+      <button class="btn primary" id="btn-psend">リンクを作ってシェアする</button>
+      <button class="btn" id="btn-pcopy">リンクをコピーする</button>
+      <button class="btn" id="btn-phome">表紙にもどる</button>
+    </div>
+    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られません。リンクの中に入って相手にだけ届きます。</p>
+  </section>
+
+  <!-- 受け取った他己評価 -->
+  <section id="s-inbox" class="screen">
+    <p class="rlabel">他己評価が届きました</p>
+    <h2 class="rname" id="i-title"></h2>
+    <p class="rcatch" id="i-catch"></p>
+    <div class="mapwrap"><div id="i-map"></div></div>
+    <div class="readout" id="i-readout"></div>
+    <p class="note" id="i-note"></p>
+    <div class="acts">
+      <button class="btn primary" id="btn-icompare"></button>
+      <button class="btn" id="btn-idetail">この結果をくわしく見る</button>
+      <button class="btn" id="btn-ihome">表紙にもどる</button>
+    </div>
+  </section>
+
+  <!-- 比較 -->
+  <section id="s-compare" class="screen">
+    <p class="eyebrow">並べて見る</p>
+    <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">いくつもの自分</h2>
+    <div class="mapwrap"><div id="c-map"></div></div>
+    <div class="legend" id="c-legend"></div>
+    <div id="c-cards"></div>
+    <div class="acts">
+      <button class="btn primary" id="btn-chome">表紙にもどる</button>
+    </div>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
