@@ -392,6 +392,13 @@ function field(id) {
     .fx-lab{font-family:var(--sans);font-size:13px;font-weight:600;
       letter-spacing:1.4px;fill:var(--lab)}
     .fx-cat{font-family:var(--sans);font-size:11px;font-weight:600;fill:var(--ink)}
+    .fx-dot circle{fill:#FFFFFF;
+      filter:drop-shadow(0 0 2px rgba(255,255,255,.95))
+             drop-shadow(0 0 5px rgba(255,255,255,.75))
+             drop-shadow(0 0 11px var(--dc))
+             drop-shadow(0 0 20px var(--dc))}
+    .fx-dot.faint circle{opacity:.6;
+      filter:drop-shadow(0 0 2px rgba(255,255,255,.8)) drop-shadow(0 0 7px var(--dc))}
     .fx-field{opacity:var(--wash)}
     .st-tl{stop-color:var(--c-tl)} .st-tr{stop-color:var(--c-tr)}
     .st-bl{stop-color:var(--c-bl)} .st-br{stop-color:var(--c-br)}
@@ -429,10 +436,11 @@ const px = y => y.ratio * 200 + 50;        // 陽陰: 右=陽
 const py = o => (1 - o.ratio) * 200 + 50;  // 温冷: 上=温
 
 /* 点は1点だけ。輪もリングも付けない。影を1枚だけ敷いて面から浮かせる */
+/* 印は小さな白い光点。芯は白のまま、グローの外側だけ系統色を混ぜて、
+   比較画面で自己評価と他己評価を見分けられるようにしている */
 function dot(x, y, color, r) {
-  return `
-    <circle cx="${x}" cy="${y}" r="${r + 2.4}" fill="var(--plate)" opacity=".9"/>
-    <circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
+  return `<g class="fx-dot" style="--dc:${color}">
+    <circle cx="${x}" cy="${y}" r="${r}"/></g>`;
 }
 
 const COL = { self: 'var(--cat-a)', peer: 'var(--cat-c)' };
@@ -448,11 +456,12 @@ function drawFlat(items, id) {
   return `<svg class="map" viewBox="0 0 300 300" role="img" aria-label="診断結果の位置">
     ${field(id)}
     ${pts.filter(p => p.faint).map(p => `
-      <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.color}" opacity=".42"/>`).join('')}
+      <g class="fx-dot faint" style="--dc:${p.color}">
+        <circle cx="${p.x}" cy="${p.y}" r="1.2"/></g>`).join('')}
     ${line}
-    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 6 : 7)).join('')}
+    ${main.map(p => dot(p.x, p.y, p.color, main.length > 1 ? 1.5 : 1.75)).join('')}
     ${main.filter(p => p.label).map(p => {
-      const up = Math.max(p.y - 15, 40), down = Math.min(p.y + 24, 268);
+      const up = Math.max(p.y - 14, 40), down = Math.min(p.y + 21, 268);
       const hits = ly => placed.some(q => Math.abs(q.y - ly) < 15 && Math.abs(q.x - p.x) < 70);
       const ly = hits(up) ? down : up;
       placed.push({ x: p.x, y: ly });
