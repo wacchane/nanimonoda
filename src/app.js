@@ -2,115 +2,251 @@
 
 /* 診断の種類。qk は QS.t のどの言い回しを使うか */
 const MODES = [
-  { id: 'self', kind: 'self', qk: 'self',  name: '自分を診断する',  hint: '18問 / 2〜3分' },
+  { id: 'self', kind: 'self', qk: 'self',  name: '自分を診断する',  hint: '35問 / 3〜4分' },
   { id: 'peer', kind: 'peer', qk: 'other', name: '他人を診断する',  hint: '結果をリンクで相手に送れます' }
 ];
 const modeOf = id => MODES.find(m => m.id === id);
 
-const SCALE = ['まったく違う', 'あまり違う', 'ややそう', 'とてもそう'];
+/* ===== ビッグファイブ 35問 =====
+   5因子 × 7問。すべて二択（強制選択）。
 
-/* 18問 = 3軸 × 6問。各軸で順3問・逆3問（黙従バイアスの相殺）。
-   self / other は主語を移しただけで、facet と dir は完全に同一。
+   なぜ二択か:
+   - 「そう / 違う」の軸が無いので、黙従バイアス（内容によらず肯定しがちな癖）が原理的に起きない
+   - 1因子7問＝奇数なので、合計 0〜7 の中央 3.5 に到達できない。**中央値が構造的に出ない**
+   - 合計がそのまま4段階に割れる（0-1 / 2-3 / 4-5 / 6-7）ので、引き伸ばし計算も要らない
+
+   hi = 高い側（外向的・協調的・きっちり・動じない・好奇心旺盛）の選択肢の番号。
+   **hi を 0 と 1 に散らすこと。** 片側に寄せると「同じ側を押し続ける」癖が出て、
+   二択にした意味が消える。
+
+   self / other は主語を移しただけで、facet も hi も完全に同一。
    これがあるから自己評価と他己評価を直接比較できる。
-   出典: docs/01-測定設計.md */
+   出典と設計原則: docs/01-測定設計.md */
 const QS = [
-  /* ── 陽陰軸: 前に出る ⇔ 引く ── */
-  { ax: 'y', dir: 1, facet: '対人接近性', t: {
-    self:  '練習に新しく来た人がいたら、自分から声をかけに行く',
-    other: 'この人は、練習に新しく来た人がいたら自分から声をかけに行く' } },
-  { ax: 'y', dir: -1, facet: '一人時間の選好', t: {
-    self:  '練習が急に中止になると、少しホッとする',
-    other: 'この人は、練習が急に中止になると少しホッとしていそうだ' } },
-  { ax: 'y', dir: 1, facet: '集団での注目志向', t: {
-    self:  'コート上やミーティングで自分が中心にいると、テンションが上がる',
-    other: 'この人は、コート上やミーティングで自分が中心にいるとテンションが上がる' } },
-  { ax: 'y', dir: -1, facet: '社交後の消耗', t: {
-    self:  '体を動かした疲れとは別に、人と長く関わった日は、楽しくてもどっと疲れる',
-    other: 'この人は、体を動かした疲れとは別に、人と長く関わった日は楽しくても疲れていそうだ' } },
-  { ax: 'y', dir: 1, facet: '発信性', t: {
-    self:  'サークル全体に関わる話題なら、自分から発言や提案を投稿するほうだ',
-    other: 'この人は、サークル全体に関わる話題なら自分から発言や提案を投稿する' } },
-  { ax: 'y', dir: -1, facet: '会話の主導性', t: {
-    self:  '練習の合間に会話が途切れても、無理に話題を探そうとは思わない',
-    other: 'この人は、練習の合間に会話が途切れても無理に話題を探そうとはしない' } },
+  /* ── 外向性 ── */
+  { f:'e', facet:'社交性', hi:0,
+    self:['休みの日は、人と会う予定が入っているほうが元気になる',
+          '休みの日は、予定がないほうが元気になる'],
+    other:['休みの日に人と会う予定が入っているほうが元気そうだ',
+           '休みの日は予定がないほうが元気そうだ'] },
+  { f:'e', facet:'自己主張性', hi:1,
+    self:['話し合いで意見が割れたとき、まとまるまで黙って見ている',
+          '話し合いで意見が割れたとき、自分から口を開いて整理する'],
+    other:['話し合いで意見が割れたとき、まとまるまで黙って見ている',
+           '話し合いで意見が割れたとき、自分から口を開いて整理する'] },
+  { f:'e', facet:'活動性', hi:0,
+    self:['予定がぎっしり詰まっているほうが調子がいい',
+          '予定に余白があるほうが調子がいい'],
+    other:['予定がぎっしり詰まっているほうが調子が良さそうだ',
+           '予定に余白があるほうが調子が良さそうだ'] },
+  { f:'e', facet:'刺激希求', hi:1,
+    self:['知らない人が多い集まりは、できれば避けたい',
+          '知らない人が多い集まりは、行ってみたくなる'],
+    other:['知らない人が多い集まりは、できれば避けたそうだ',
+           '知らない人が多い集まりでも、進んで行くほうだ'] },
+  { f:'e', facet:'感情の表出', hi:0,
+    self:['うれしいことがあると、周りにすぐ話す',
+          'うれしいことがあっても、自分の中にしまっておくことが多い'],
+    other:['うれしいことがあると、周りにすぐ話す',
+           'うれしいことがあっても、自分の中にしまっているほうだ'] },
+  { f:'e', facet:'社交後の消耗', hi:1,
+    self:['大勢と長く過ごした日は、後でどっと疲れる',
+          '大勢と長く過ごした日でも、そのまま次の予定に行ける'],
+    other:['大勢と長く過ごした日は、後でどっと疲れていそうだ',
+           '大勢と長く過ごした日でも、そのまま動けそうだ'] },
+  { f:'e', facet:'注目志向', hi:1,
+    self:['集まりで自分に注目が集まると、居心地が悪い',
+          '集まりで自分に注目が集まると、気分が乗る'],
+    other:['注目が集まると、居心地が悪そうだ',
+           '注目が集まると、気分が乗っている'] },
 
-  /* ── 温冷軸: 情で決める ⇔ 理で決める ── */
-  { ax: 'o', dir: 1, facet: '共感的傾聴', t: {
-    self:  'メンバーが悩みを話してきたら、解決策より先に気持ちに寄り添う',
-    other: 'この人は、メンバーが悩みを話すと解決策より先に気持ちに寄り添う' } },
-  { ax: 'o', dir: -1, facet: '公平性 vs 個別配慮', t: {
-    self:  '相手が誰であっても、サークルの決まりごとは同じように適用すべきだ',
-    other: 'この人は、相手が誰であってもサークルの決まりごとを同じように適用する' } },
-  { ax: 'o', dir: 1, facet: '情動伝染', t: {
-    self:  'ミスして落ち込んでいるメンバーがいると、自分まで気分が引きずられる',
-    other: 'この人は、落ち込んでいるメンバーがいると自分まで気分が引きずられるほうだ' } },
-  { ax: 'o', dir: -1, facet: '率直さ vs 配慮', t: {
-    self:  '相手が気を悪くする可能性があっても、プレーについて正しいと思うことは言う',
-    other: 'この人は、相手が気を悪くする可能性があってもプレーについて正しいと思うことは言う' } },
-  { ax: 'o', dir: 1, facet: '意思決定基準', t: {
-    self:  '練習メニューや方針を決めるとき、正しさより全員が納得するかを重視する',
-    other: 'この人は、練習メニューや方針を決めるとき正しさより全員が納得するかを重視する' } },
-  { ax: 'o', dir: -1, facet: '感情への反応スタイル', t: {
-    self:  '感情的になっている人がいると、まず落ち着いて事実を整理したくなる',
-    other: 'この人は、感情的になっている人がいると、まず落ち着いて事実を整理しようとする' } },
+  /* ── 協調性 ── */
+  { f:'a', facet:'信頼', hi:0,
+    self:['初対面の人は、まず信用してみるほうだ',
+          '初対面の人は、様子を見てから判断する'],
+    other:['初対面の人を、まず信用してみるほうだ',
+           '初対面の人は、様子を見てから判断するほうだ'] },
+  { f:'a', facet:'率直さ vs 配慮', hi:1,
+    self:['相手が傷つきそうでも、正しいと思うことははっきり言う',
+          '相手が傷つきそうなら、言い方を変えてでも角を立てない'],
+    other:['相手が傷つきそうでも、正しいと思うことははっきり言う',
+           '相手が傷つきそうなら、言い方を変えてでも角を立てない'] },
+  { f:'a', facet:'利他性', hi:0,
+    self:['困っている人がいたら、頼まれなくても声をかける',
+          '困っている人がいても、本人から言われるまでは踏み込まない'],
+    other:['困っている人がいたら、頼まれなくても声をかける',
+           '困っている人がいても、本人から言われるまでは踏み込まない'] },
+  { f:'a', facet:'対立の回避', hi:0,
+    self:['意見が対立したら、まず自分が折れて場を収める',
+          '意見が対立したら、納得いくまで話し合う'],
+    other:['意見が対立したら、まず自分が折れて場を収める',
+           '意見が対立したら、納得いくまで話し合う'] },
+  { f:'a', facet:'謙虚さ', hi:1,
+    self:['うまくいったときは、自分がやったこととして話す',
+          'うまくいったときは、周りのおかげとして話す'],
+    other:['うまくいったときは、自分がやったこととして話す',
+           'うまくいったときは、周りのおかげとして話す'] },
+  { f:'a', facet:'共感性', hi:0,
+    self:['相談されたら、まず相手の気持ちを聞く',
+          '相談されたら、まず何をすべきかを話す'],
+    other:['相談されたら、まず相手の気持ちを聞く',
+           '相談されたら、まず何をすべきかを話す'] },
+  { f:'a', facet:'競争場面での態度', hi:1,
+    self:['勝ち負けがかかると、相手に厳しくなる',
+          '勝ち負けがかかっても、相手への態度は変えない'],
+    other:['勝ち負けがかかると、相手に厳しくなる',
+           '勝ち負けがかかっても、相手への態度は変わらない'] },
 
-  /* ── 係適軸: 担ってやり切る ⇔ 人に任せる ──
-     「できるか（漏れなくやれる）」3問 と「やるか（自分から引き受ける）」3問 の複合尺度。
-     旧・堅緩軸は前者しか測っておらず、狙っている人材の半分を取りこぼしていた。
-     順逆は軸全体で3:3。ブロック単位では揃っていないので、
-     2つの下位得点を別々に出してはいけない（詳細は docs/01-測定設計.md 第3節） */
-  { ax: 'c', dir: 1, facet: '締切の扱い', t: {
-    self:  '出欠の返事や提出物は、期限より早めに出すほうだ',
-    other: 'この人は、出欠の返事や提出物を期限より早めに出すほうだ' } },
-  { ax: 'c', dir: 1, facet: '継続の確実さ', t: {
-    self:  '毎月決まってやることは、忘れずに同じように続けられる',
-    other: 'この人は、毎月決まってやることを忘れずに同じように続けられる' } },
-  { ax: 'c', dir: -1, facet: '抜け漏れ', t: {
-    self:  '持ち物や連絡を忘れていて、後から気づくことがある',
-    other: 'この人は、持ち物や連絡を忘れていることがある' } },
-  { ax: 'c', dir: 1, facet: '自発的な引き受け', t: {
-    self:  '体育館の準備や片づけは、言われる前に手を出すほうだ',
-    other: 'この人は、体育館の準備や片づけを言われる前に手を出すほうだ' } },
-  { ax: 'c', dir: -1, facet: '役割の引き受け', t: {
-    self:  '係の仕事は、やりたい人がやればいいと思う',
-    other: 'この人は、係の仕事はやりたい人がやればいいと考えていそうだ' } },
-  { ax: 'c', dir: -1, facet: '越境した手助け', t: {
-    self:  '頼まれていない仕事は、担当の人の領分だと思って手を出さない',
-    other: 'この人は、頼まれていない仕事には手を出さないほうだ' } }
+  /* ── 誠実性 ── */
+  { f:'c', facet:'秩序', hi:1,
+    self:['持ち物や部屋は、その時々で置き場所が変わる',
+          '持ち物や部屋は、だいたい決まった場所に収まっている'],
+    other:['持ち物は、その時々で置き場所が変わるほうだ',
+           '持ち物は、だいたい決まった場所に収まっているほうだ'] },
+  { f:'c', facet:'責任遂行', hi:0,
+    self:['引き受けたことは、多少無理をしてでも期限内に終わらせる',
+          '引き受けたことでも、間に合わなければ事情を話して延ばす'],
+    other:['引き受けたことは、多少無理をしてでも期限内に終わらせる',
+           '引き受けたことでも、間に合わなければ事情を話して延ばす'] },
+  { f:'c', facet:'慎重さ', hi:1,
+    self:['思いついたら、まず動いてみる',
+          '思いついても、段取りを決めてから動く'],
+    other:['思いついたら、まず動いてみるほうだ',
+           '思いついても、段取りを決めてから動くほうだ'] },
+  { f:'c', facet:'勤勉さ', hi:0,
+    self:['気が乗らない用事でも、決めた時間には手をつける',
+          '気が乗らない用事は、乗るまで後回しにする'],
+    other:['気が乗らない用事でも、決めた時間には手をつける',
+           '気が乗らない用事は、後回しにしがちだ'] },
+  { f:'c', facet:'達成追求', hi:1,
+    self:['そこそこできていれば、それで十分だと思う',
+          'そこそこできていても、もっと良くできないか考える'],
+    other:['そこそこできていれば十分と考えていそうだ',
+           'そこそこできていても、もっと良くしようとする'] },
+  { f:'c', facet:'継続の確実さ', hi:1,
+    self:['毎月決まってやることでも、うっかり抜けることがある',
+          '毎月決まってやることは、忘れずに続けられる'],
+    other:['毎月決まってやることが、うっかり抜けることがある',
+           '毎月決まってやることを、忘れずに続けている'] },
+  { f:'c', facet:'計画性', hi:0,
+    self:['予定が決まったら、早めに段取りを済ませる',
+          '予定が決まっても、直前になってから動く'],
+    other:['予定が決まると、早めに段取りを済ませる',
+           '予定が決まっても、直前になってから動く'] },
+
+  /* ── 情緒安定性 ── */
+  { f:'s', facet:'不安', hi:1,
+    self:['先のことを考えて不安になることが多い',
+          '先のことは、なるようになると思える'],
+    other:['先のことを考えて不安になることが多そうだ',
+           '先のことは、なるようになると考えていそうだ'] },
+  { f:'s', facet:'いらだちの表出', hi:0,
+    self:['思いどおりにいかなくても、態度には出にくい',
+          '思いどおりにいかないと、いらだちが表に出る'],
+    other:['思いどおりにいかなくても、態度には出ない',
+           '思いどおりにいかないと、いらだちが表に出る'] },
+  { f:'s', facet:'切り替え', hi:1,
+    self:['失敗すると、しばらく引きずる',
+          '失敗しても、切り替えが早い'],
+    other:['失敗すると、しばらく引きずっていそうだ',
+           '失敗しても、切り替えが早い'] },
+  { f:'s', facet:'自意識', hi:0,
+    self:['人にどう見られているかは、あまり気にならない',
+          '人にどう見られているかが気になる'],
+    other:['人にどう見られているかを、あまり気にしていない',
+           '人にどう見られているかを気にしていそうだ'] },
+  { f:'s', facet:'衝動の統制', hi:1,
+    self:['疲れているときほど、余計なものを買ったり食べたりする',
+          '疲れているときでも、自分をコントロールできる'],
+    other:['疲れているときは、行動が雑になりそうだ',
+           '疲れているときでも、自分をコントロールできている'] },
+  { f:'s', facet:'ストレス耐性', hi:0,
+    self:['急なトラブルが起きても、落ち着いて対処できる',
+          '急なトラブルが起きると、頭が真っ白になる'],
+    other:['急なトラブルが起きても、落ち着いて対処する',
+           '急なトラブルが起きると、慌てるほうだ'] },
+  { f:'s', facet:'気分の安定', hi:1,
+    self:['一日の中で気分の波が大きい',
+          '一日を通して気分はだいたい一定している'],
+    other:['一日の中で気分の波が大きそうだ',
+           '一日を通して気分はだいたい一定している'] },
+
+  /* ── 開放性 ── */
+  { f:'o', facet:'好奇心', hi:0,
+    self:['知らない分野の話も、面白がって聞ける',
+          '知らない分野の話は、あまり入ってこない'],
+    other:['知らない分野の話も、面白がって聞いている',
+           '知らない分野の話には、あまり乗ってこない'] },
+  { f:'o', facet:'新奇な行動', hi:1,
+    self:['店に入ったら、だいたい同じものを頼む',
+          '店に入ったら、食べたことのないものを試す'],
+    other:['店では、だいたい同じものを頼むほうだ',
+           '店では、食べたことのないものを試すほうだ'] },
+  { f:'o', facet:'想像', hi:0,
+    self:['頭の中であれこれ想像している時間が多い',
+          '頭の中は、目の前のことでだいたい埋まっている'],
+    other:['あれこれ想像をめぐらせているほうだ',
+           '目の前のことに集中しているほうだ'] },
+  { f:'o', facet:'美的感受性', hi:0,
+    self:['音楽や景色に、強く心を動かされることがある',
+          '音楽や景色で、心が大きく動くことはあまりない'],
+    other:['音楽や景色に、強く心を動かされることがありそうだ',
+           '音楽や景色で心が大きく動くことは、あまりなさそうだ'] },
+  { f:'o', facet:'価値観の柔軟性', hi:1,
+    self:['昔からのやり方には、それなりの理由があると思う',
+          '昔からのやり方でも、合わなければ変えていい'],
+    other:['昔からのやり方を尊重するほうだ',
+           '昔からのやり方でも、合わなければ変えるほうだ'] },
+  { f:'o', facet:'抽象への関心', hi:0,
+    self:['答えの出ない問いについて考えるのは楽しい',
+          '答えの出ない問いを考えるのは、時間がもったいない'],
+    other:['答えの出ない問いを考えるのが好きそうだ',
+           '答えの出ない問いには、あまり関心がなさそうだ'] },
+  { f:'o', facet:'変化への構え', hi:1,
+    self:['生活のやり方は、できるだけ変えたくない',
+          '生活のやり方は、ときどき変えたくなる'],
+    other:['生活のやり方は、あまり変えないほうだ',
+           '生活のやり方を、ときどき変えるほうだ'] }
 ];
 
-const AXES = [
-  { id: 'y', name: '陽陰', hi: '陽', lo: '陰' },
-  { id: 'o', name: '温冷', hi: '温', lo: '冷' },
-  { id: 'c', name: '係適', hi: '担', lo: '任' }
+/* 5因子。lo / hi はどちらも肯定的に読める言葉にする。
+   低い側が欠点に見えると、全員が高い側に寄る（社会的望ましさ） */
+const FACTORS = [
+  { id:'e', name:'外向性', lo:'内向的',     hi:'外向的',
+    d:'人と関わることでエネルギーが増えるか、減るか。' },
+  { id:'a', name:'協調性', lo:'率直',       hi:'協調的',
+    d:'人に合わせるか、思ったことをそのまま出すか。' },
+  { id:'c', name:'誠実性', lo:'おおらか',   hi:'きっちり',
+    d:'決めたことを計画どおりに運ぶか、その場で柔軟に動くか。' },
+  { id:'s', name:'情緒安定性', lo:'感じやすい', hi:'動じない',
+    d:'揺さぶられやすいか、平静を保てるか。' },
+  { id:'o', name:'開放性', lo:'現実的',     hi:'好奇心旺盛',
+    d:'新しいものへ向かうか、慣れたやり方を守るか。' }
 ];
-const BANDS = {
-  y: ['強い陰キャ', 'やや陰キャ', 'やや陽キャ', '強い陽キャ'],
-  o: ['強い冷キャ', 'やや冷キャ', 'やや温キャ', '強い温キャ'],
-  c: ['強い頼キャ', 'やや頼キャ', 'やや担キャ', '強い担キャ']
-};
+const FCT = id => FACTORS.find(f => f.id === id);
+/* 合計 0〜7 を4段階に割る。ちょうど2つずつ入る */
+const BAND_OF = sum => sum <= 1 ? 0 : sum <= 3 ? 1 : sum <= 5 ? 2 : 3;
+const bandName = (f, b) => ['とても', 'やや', 'やや', 'とても'][b] + (b < 2 ? f.lo : f.hi);
 
 /* ===== 役職 =====
-   適性は3軸の重み付き合計で出す。設問は性格を聞き、役職は結果から導く。
-   副代表は「仕切り役(冷)」と「盛り上げ役(温)」の2枠あるが、
-   表示は `副代表` の1つに畳む（高いほうを採用）。 */
-const ROLE_LABELS = ['代表', '副代表', 'イベント係', '施設係', '会計係'];
+   適性は5因子の重み付き合計で出す。設問は性格を聞き、役職は結果から導く。
+   会計係・施設係は診断から外した。あの2役に要るのは適性より実績で、指名制のほうが確実。
+
+   副代表は「仕切り役」と「盛り上げ役」の2枠あるが、表示は `副代表` の1つに畳む。 */
+const ROLE_LABELS = ['代表', '副代表', 'イベント係'];
 const ROLES = [
-  { label: '代表',       kind: '',           w: { y: 4, o: -2, c: 1 },
-    d: 'チームの代表として全体を俯瞰し、決める役。実務を自分で抱えるのではなく、前に立って方針を決め、情に流されずに判断できることが要ります。' },
-  { label: '副代表',     kind: '仕切り役',   w: { y: 2, o: -3, c: 4 },
+  { label: '代表',       kind: '',           w: { e: 3, a: -1, c: 2, s: 3, o: 1 },
+    d: 'チームの代表として全体を俯瞰し、決める役。前に立てること、情に流されないこと、そして揉めごとが起きても動じないことが要ります。' },
+  { label: '副代表',     kind: '仕切り役',   w: { e: 1, a: -2, c: 4, s: 2, o: 0 },
     d: '実行部隊の仕切り側。練習の中身と時間を締める役で、前に立つ力より現場を回し切る力が要ります。' },
-  { label: '副代表',     kind: '盛り上げ役', w: { y: 4, o: 2,  c: 1 },
+  { label: '副代表',     kind: '盛り上げ役', w: { e: 4, a: 3,  c: 0, s: 1, o: 1 },
     d: '実行部隊の盛り上げ側。その場のテンションを上げて、人が離れないようにする役です。' },
-  { label: 'イベント係', kind: '',           w: { y: 1, o: 3,  c: 3 },
-    d: '皆が楽しめるイベントを企画して運営する役。目立つ力より、誰が楽しめていないかに気づける温かさと、形にする段取り力が要ります。' },
-  { label: '施設係',     kind: '',           w: { y: -1, o: 0, c: 4 },
-    d: '毎月の体育館予約を担う役。欠けると活動が成り立たない要の位置です。必要なのは目立つ力ではなく、頼まれる前に動けることと、それを毎月切らさないことです。' },
-  { label: '会計係',     kind: '',           w: { y: -1, o: -4, c: 4 },
-    d: '会費と収支を管理する役。相手が誰でも同じ基準で徴収できる冷静さと、数字を合わせ切る几帳面さが要ります。' }
+  { label: 'イベント係', kind: '',           w: { e: 1, a: 3,  c: 3, s: 0, o: 2 },
+    d: '皆が楽しめるイベントを企画して運営する役。誰が楽しめていないかに気づける温かさと、形にする段取り力の両方が要ります。' }
 ];
 
-/* 16タイプ（陽陰 × 温冷）。エンタメとしての人物像で、役職適性とは別軸 */
+/* 16タイプ（外向性 × 協調性）。エンタメとしての人物像で、役職適性とは別系統。
+   TYPES[外向性band][協調性band]、0 = とても内向的 / とても率直 */
 const TYPES = [
   [ /* 強い陰 */
     { n:'完全論理体',      c:'感情の外側で考える人',
@@ -163,7 +299,7 @@ const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均
    形: { self: {s,at} | null, peers: [ {nick,s,at} ] }
    設問構成が変わるたびにキーを上げる。v2（堅緩軸）とは非互換なので読まない */
 const store = (() => {
-  const KEY = 'nanimonoda.v3';
+  const KEY = 'nanimonoda.v4';
   let mem = null;
   let ok = false;
   try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); ok = true; } catch (e) { ok = false; }
@@ -212,109 +348,73 @@ const theme = (() => {
 })();
 
 /* ===== 採点 =====
-   素点の割合は中央に集まりやすい。6問・順3逆3では1点の刻みが 5.6pt しかなく、
-   中央の隣が 44% / 56% にしかならないうえ、全問同じ選択肢だとちょうど50%に落ちる。
-   そこで中央から外へ引き伸ばす。指数が小さいほど強く広がる。
-   ※ 設問を増やすと刻みが細かくなり、かえって中央に寄る。ここは式で解く。 */
-const SPREAD_EXP = 0.55;
-const spread = raw => {
-  const d = raw * 2 - 1;
-  return (Math.sign(d) * Math.pow(Math.abs(d), SPREAD_EXP) + 1) / 2;
-};
-
-function band(ratio) {
-  if (ratio <= 0.25) return 0;
-  if (ratio <= 0.50) return 1;   // 50%ちょうどは陰側・冷側・任側に含める
-  if (ratio <= 0.75) return 2;
-  return 3;
-}
-
+   高い側（hi）を選んだ数を因子ごとに数える。1因子7問なので 0〜7。
+   奇数なので中央 3.5 に到達できず、**中央値が構造的に出ない。**
+   合計をそのまま4段階に割るので、引き伸ばしのような補正も要らない。 */
 function score(answers) {
   const out = {};
-  AXES.forEach(a => {
-    const list = QS.map((q, i) => ({ q, i })).filter(x => x.q.ax === a.id);
-    const sum = list.reduce((acc, x) => acc + (x.q.dir === 1 ? answers[x.i] : 3 - answers[x.i]), 0);
-    const max = list.length * 3;
-    const ratio = spread(sum / max);
-    out[a.id] = { n: list.length, sum, max, ratio, band: band(ratio) };
+  FACTORS.forEach(f => {
+    const list = QS.map((q, i) => ({ q, i })).filter(x => x.q.f === f.id);
+    const sum = list.reduce((n, x) => n + (answers[x.i] === x.q.hi ? 1 : 0), 0);
+    const max = list.length;
+    out[f.id] = { sum, max, ratio: sum / max, band: BAND_OF(sum) };
   });
   return out;
 }
 
-const typeOf = s => TYPES[s.y.band][s.o.band];
+const typeOf = s => TYPES[s.e.band][s.a.band];
 
-/* 役職適性。各軸を -1〜+1 に直して重み付き合計し、0〜100 に均す */
+/* 役職適性。各因子を -1〜+1 に直して重み付き合計し、0〜100 に均す */
 function fitOf(s, w) {
   let raw = 0, max = 0;
-  AXES.forEach(a => {
-    const wt = w[a.id] || 0;
+  FACTORS.forEach(f => {
+    const wt = w[f.id] || 0;
     if (!wt) return;
-    raw += wt * (s[a.id].ratio * 2 - 1);
+    raw += wt * (s[f.id].ratio * 2 - 1);
     max += Math.abs(wt);
   });
   return max ? Math.round(((raw / max + 1) / 2) * 100) : 50;
 }
 
-/* ===== 六角形（6役職のレーダー） =====
-   6つの役職はちょうど六角形に収まる。畳まずに副代表を2枠に開いて使う。
-   隣り合うスポークが性質の近いものになるよう並び順を決めている。
+/* ===== 五角形（ビッグファイブのレーダー） =====
+   5因子はちょうど正五角形に収まる。**因子どうしは互いに独立**なので、
+   6役職を並べていた頃と違って、形がそのまま5つの情報を表す。
 
-   注意: 6つの適性値は3軸から導いた合成値なので、互いに独立ではない。
-   六角形が取りうる形は3パラメータぶんに限られる。形の比較には使えるが、
-   6つの独立した情報が並んでいるわけではない。 */
-const HEX_ORDER = ['代表', '副代表:盛り上げ役', 'イベント係', '施設係', '会計係', '副代表:仕切り役'];
-const HEX_LABEL = {
-  '代表': ['代表'],
-  '副代表:盛り上げ役': ['副代表', '盛り上げ'],
-  'イベント係': ['イベント係'],
-  '施設係': ['施設係'],
-  '会計係': ['会計係'],
-  '副代表:仕切り役': ['副代表', '仕切り']
-};
-const keyOf = r => r.label + (r.kind ? ':' + r.kind : '');
-
-/* 畳まない6つぶんの適性を、六角形の並び順で返す */
-const hexFits = s => HEX_ORDER.map(k => {
-  const r = ROLES.find(x => keyOf(x) === k);
-  return { key: k, v: fitOf(s, r.w) };
-});
-
-/* series: [{ label, color, s }] */
-function hexChart(series) {
-  const C = 150, R = 88;
+   ただしレーダーは面積が値の2乗で効き、差を実際より大きく見せる。
+   **数値のバー（readout）を必ず併記すること。** */
+function radarChart(series) {
+  const C = 150, R = 88, N = FACTORS.length;
   const at = (i, t) => {
-    const a = (-90 + i * 60) * Math.PI / 180;
+    const a = (-90 + i * (360 / N)) * Math.PI / 180;
     return [C + Math.cos(a) * R * t, C + Math.sin(a) * R * t];
   };
-  const poly = t => HEX_ORDER.map((_, i) => at(i, t).join(',')).join(' ');
+  const poly = t => FACTORS.map((_, i) => at(i, t).join(',')).join(' ');
 
   const grid = [0.25, 0.5, 0.75, 1].map(t =>
     `<polygon class="hx-grid" points="${poly(t)}"/>`).join('')
-    + HEX_ORDER.map((_, i) =>
+    + FACTORS.map((_, i) =>
       `<line class="hx-grid" x1="${C}" y1="${C}" x2="${at(i,1)[0]}" y2="${at(i,1)[1]}"/>`).join('');
 
   const shapes = series.map(sr => {
-    const f = hexFits(sr.s);
-    const pts = f.map((x, i) => at(i, x.v / 100).join(',')).join(' ');
+    const pts = FACTORS.map((f, i) => at(i, sr.s[f.id].ratio).join(',')).join(' ');
     return `<polygon points="${pts}" fill="${sr.color}" fill-opacity=".16"
               stroke="${sr.color}" stroke-width="1.8" stroke-linejoin="round"/>`
-      + f.map((x, i) => { const [px2, py2] = at(i, x.v / 100);
-          return `<circle cx="${px2}" cy="${py2}" r="3" fill="${sr.color}"/>`; }).join('');
+      + FACTORS.map((f, i) => { const [x, y] = at(i, sr.s[f.id].ratio);
+          return `<circle cx="${x}" cy="${y}" r="3" fill="${sr.color}"/>`; }).join('');
   }).join('');
 
-  const labels = HEX_ORDER.map((k, i) => {
-    const [lx, ly] = at(i, 1.2);
+  const labels = FACTORS.map((f, i) => {
+    const [lx, ly] = at(i, 1.19);
     const anchor = Math.abs(lx - C) < 6 ? 'middle' : (lx > C ? 'start' : 'end');
-    const lines = HEX_LABEL[k];
     return `<text class="hx-lab" x="${lx}" y="${ly}" text-anchor="${anchor}"
-              dy="${lines.length > 1 ? '-0.1em' : '0.35em'}">${
-      lines.map((t, j) => `<tspan x="${lx}" dy="${j ? '1.15em' : 0}">${t}</tspan>`).join('')}</text>`;
+              dy=".35em">${f.name}</text>`;
   }).join('');
 
-  return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="6役職への適性">
+  return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="5因子のレーダー">
     <style>
       .hx-grid{fill:none;stroke:var(--grid);stroke-width:1}
-      .hx-lab{font-family:var(--sans);font-size:10px;font-weight:600;fill:var(--ink-70);letter-spacing:.02em}
+      .hx-lab{font-family:var(--sans);font-size:10.5px;font-weight:600;
+        fill:var(--ink-70);letter-spacing:.02em}
     </style>
     ${grid}${shapes}${labels}
   </svg>`;
@@ -333,9 +433,9 @@ function roleFits(s) {
    18問 × 2bit = 5バイト + ニックネームのUTF-8 を base64url にして
    URLのフラグメントに載せる。# 以降はサーバーに送信されない。
    設問構成を変えたら必ず LINK_V を上げること（古いリンクの誤読を防ぐ） */
-const LINK_V = '3';
+const LINK_V = '4';
 const NICK_MAX = 20;
-const PACK_BYTES = Math.ceil(QS.length / 4);
+const PACK_BYTES = Math.ceil(QS.length / 8);
 
 const b64uEnc = bytes => {
   let s = '';
@@ -345,14 +445,15 @@ const b64uEnc = bytes => {
 const b64uDec = str => Uint8Array.from(
   atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 
+/* 二択なので1問1ビット。35問 = 5バイト */
 function packAnswers(a) {
   const b = new Uint8Array(PACK_BYTES);
-  for (let i = 0; i < QS.length; i++) b[i >> 2] |= (a[i] & 3) << ((i % 4) * 2);
+  for (let i = 0; i < QS.length; i++) b[i >> 3] |= (a[i] & 1) << (i % 8);
   return b;
 }
 function unpackAnswers(b) {
   const a = {};
-  for (let i = 0; i < QS.length; i++) a[i] = (b[i >> 2] >> ((i % 4) * 2)) & 3;
+  for (let i = 0; i < QS.length; i++) a[i] = (b[i >> 3] >> (i % 8)) & 1;
   return a;
 }
 
@@ -379,19 +480,18 @@ function readLink(hash) {
   } catch (e) { return null; }
 }
 
-/* 他己評価の総合。軸ごとに素点を平均する */
+/* 他己評価の総合。因子ごとに素点を平均する */
 function aggregate(peers) {
   const out = {};
-  AXES.forEach(a => {
-    const max = peers[0].s[a.id].max;
-    const sum = peers.reduce((acc, p) => acc + p.s[a.id].sum, 0) / peers.length;
-    const ratio = spread(sum / max);   // 平均してから広げる
-    out[a.id] = { n: peers[0].s[a.id].n, sum, max, ratio, band: band(ratio) };
+  FACTORS.forEach(f => {
+    const max = peers[0].s[f.id].max;
+    const sum = peers.reduce((n, p) => n + p.s[f.id].sum, 0) / peers.length;
+    out[f.id] = { sum, max, ratio: sum / max, band: BAND_OF(Math.round(sum)) };
   });
   return out;
 }
 
-/* ===== 座標盤（陽陰 × 温冷。係適は数値とバーで見せる） ===== */
+/* ===== 座標盤（外向性 × 協調性。残る3因子はバーとレーダーで見せる） ===== */
 /* 座標盤の地。四隅の色を直接指定した双一次（バイリニア）の面。
    半透明を4枚重ねる方式は中央が白く抜けて彩度が出ないため、
    下半分の面に上半分の面を縦フェードのマスクで重ねる形にしている。
@@ -437,16 +537,16 @@ function field(id) {
     <line class="fx-axis" x1="150" y1="28" x2="150" y2="272"/>
     <line class="fx-axis" x1="28" y1="150" x2="272" y2="150"/>
   </g>
-  <text class="fx-lab" x="150" y="19"  text-anchor="middle">温</text>
-  <text class="fx-lab" x="150" y="291" text-anchor="middle">冷</text>
-  <text class="fx-lab" x="14" y="155" text-anchor="middle">陰</text>
-  <text class="fx-lab" x="286" y="155" text-anchor="middle">陽</text>`;
+  <text class="fx-lab" x="150" y="19"  text-anchor="middle">協調</text>
+  <text class="fx-lab" x="150" y="291" text-anchor="middle">率直</text>
+  <text class="fx-lab" x="22" y="155" text-anchor="middle">内向</text>
+  <text class="fx-lab" x="278" y="155" text-anchor="middle">外向</text>`;
 }
 
 /* プロットは 28〜272。四辺に残した28は軸ラベルの居場所で、これ以上は詰められない */
 const PLOT = { o: 28, w: 244 };
-const px = y => y.ratio * PLOT.w + PLOT.o;        // 陽陰: 右=陽
-const py = o => (1 - o.ratio) * PLOT.w + PLOT.o;  // 温冷: 上=温
+const px = e => e.ratio * PLOT.w + PLOT.o;        // 外向性: 右=外向
+const py = a => (1 - a.ratio) * PLOT.w + PLOT.o;  // 協調性: 上=協調
 
 /* 点は1点だけ。輪もリングも付けない */
 /* 印は小さな白い光点。芯は白のまま、グローの外側だけ系統色を混ぜて、
@@ -470,7 +570,7 @@ const COL = {
 /* items: [{ color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ）
    点の脇に名前は出さない。どれがどれかは色と、盤の下の凡例で示す */
 function drawFlat(items, id) {
-  const pts = items.map(it => ({ ...it, x: px(it.s.y), y: py(it.s.o) }));
+  const pts = items.map(it => ({ ...it, x: px(it.s.e), y: py(it.s.a) }));
   const main = pts.filter(p => !p.faint);
   const line = main.length > 1
     ? `<polyline points="${main.map(p => `${p.x},${p.y}`).join(' ')}" fill="none"
@@ -560,16 +660,16 @@ function start(mode) {
 function renderQ() {
   const { mode, i, answers } = cur;
   const m = modeOf(mode);
-  const picked = answers[i];          // 戻ってきたときは前回の選択を復元する
+  const q = QS[i];
+  const picked = answers[i];
   $('qmeta').textContent = `${m.name} ${String(i + 1).padStart(2, '0')}/${QS.length}`;
   $('bar').style.width = ((i + 1) / QS.length * 100) + '%';
-  $('qno').textContent = `Q${String(i + 1).padStart(2, '0')} — ${QS[i].facet}`;
-  $('qtext').textContent = QS[i].t[m.qk];
-  $('opts').innerHTML = [3, 2, 1, 0].map(v => `
+  $('qno').textContent = `Q${String(i + 1).padStart(2, '0')} — ${FCT(q.f).name}`;
+  $('qtext').textContent = m.kind === 'peer' ? 'この人に近いのはどちら？' : '自分に近いのはどちら？';
+  $('opts').innerHTML = q[m.qk].map((t, v) => `
     <button class="btn opt ${v === picked ? 'sel' : ''}" data-v="${v}"
             aria-pressed="${v === picked}">
-      <span class="gauge">${[0,1,2,3].map(k => `<i class="${k <= v ? 'on' : ''}"></i>`).join('')}</span>
-      <span>${SCALE[v]}</span>
+      <span class="ab">${'AB'[v]}</span><span class="ot">${t}</span>
     </button>`).join('');
   document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => answer(+b.dataset.v));
   $('btn-back').style.visibility = i === 0 ? 'hidden' : 'visible';
@@ -602,10 +702,14 @@ function finish() {
 }
 
 /* ===== 表示部品 ===== */
-const readout = (s, exact = true) => AXES.map(a => `
-  <div><div class="k">${a.name}</div><div class="v">${BANDS[a.id][s[a.id].band]}</div>
-    <div class="p">${exact ? s[a.id].sum : '平均 ' + s[a.id].sum.toFixed(1)}/${s[a.id].max}</div></div>`
-).join('');
+/* 5因子ぶんのバー。数値は素点の分数だけ出す */
+const readout = (s, exact = true) => FACTORS.map(f => `
+  <div class="fct">
+    <span class="fl">${f.name}</span>
+    <span class="fb"><i style="width:${s[f.id].ratio * 100}%"></i></span>
+    <span class="fv">${bandName(f, s[f.id].band)}</span>
+    <span class="fn">${exact ? s[f.id].sum : s[f.id].sum.toFixed(1)}/${s[f.id].max}</span>
+  </div>`).join('');
 
 const fitBars = fits => fits.map((f, i) => `
   <div class="fitrow ${i === 0 ? 'top' : ''}">
@@ -628,7 +732,7 @@ function showResult(kind, idx) {
   $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
   $('r-readout').innerHTML = readout(s);
   $('r-body').textContent = t.d;
-  $('r-hex').innerHTML = hexChart([{ color: isPeer ? COL.peer : COL.self, s }]);
+  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer : COL.self, s }]);
   $('r-fit').innerHTML = fitBars(fits);
   /* 全部低く出た人に、いちばん高いだけの役職を勧めたように読ませない */
   const head = fits[0].v < 50
@@ -666,7 +770,7 @@ async function shareOut({ title, text, url }, okMsg) {
 
 function shareResult(t, s, fits) {
   const text = `私は「${t.n}」\n`
-    + AXES.map(a => `${a.name} ${BANDS[a.id][s[a.id].band]}`).join(' / ')
+    + FACTORS.map(f => `${f.name} ${bandName(f, s[f.id].band)}`).join(' / ')
     + `\n向いている役職: ${fits[0].label}（${fits[0].v}）\n— 何者だ`;
   shareOut({ title: '何者だ', text }, 'コピーしました');
 }
@@ -743,7 +847,7 @@ function showCompare() {
 const sign = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v);
 
 function gapCard(me, agg, n) {
-  const dy = Math.round((agg.y.ratio - me.y.ratio) * 100);
+  const dy = Math.round((agg.e.ratio - me.e.ratio) * 100);
   const abs = Math.abs(dy), open = dy >= 0;
   const who = n === 1 ? '相手' : `${n}人の平均`;
   let verdict, desc;
@@ -762,12 +866,12 @@ function gapCard(me, agg, n) {
       : `${who}から見たあなたは、自分の見立てよりかなり内向きです。自分では出しているつもりのものが伝わっていない可能性があります。`;
   }
   return `<div class="card-x">
-    <div class="k">自己評価と他己評価の差 — 陽陰軸 ${abs}pt</div>
+    <div class="k">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
-    <div class="delta">${AXES.map(a => `
-      <div><span class="dk">${a.name}</span>
-        <span class="dv">自己 ${Math.round(me[a.id].ratio * 100)}% → 他己 ${Math.round(agg[a.id].ratio * 100)}%
-          <b>${sign(Math.round((agg[a.id].ratio - me[a.id].ratio) * 100))}</b></span></div>`).join('')}</div>
+    <div class="delta">${FACTORS.map(f => `
+      <div><span class="dk">${f.name}</span>
+        <span class="dv">自己 ${Math.round(me[f.id].ratio * 100)}% → 他己 ${Math.round(agg[f.id].ratio * 100)}%
+          <b>${sign(Math.round((agg[f.id].ratio - me[f.id].ratio) * 100))}</b></span></div>`).join('')}</div>
     <p class="sub-note">${PEER_NOTE}</p></div>`;
 }
 
@@ -776,7 +880,7 @@ function fitCompare(me, agg) {
   const same = a[0].label === b[0].label;
   return `<div class="card-x">
     <div class="k">向いている役職の見え方</div>
-    ${hexChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
+    ${radarChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
     <div class="hexleg">
       <span><i style="background:${COL.self}"></i>自己評価</span>
       <span><i style="background:${COL.peer}"></i>他己評価 総合</span>
@@ -836,7 +940,7 @@ function boot() {
     const d = store.load();
     /* 同じ人から同じ内容が二重に入らないようにする */
     let idx = d.peers.findIndex(p => p.nick === got.nick
-      && AXES.every(a => p.s[a.id].sum === got.s[a.id].sum));
+      && FACTORS.every(f => p.s[f.id].sum === got.s[f.id].sum));
     let full = false;
     if (idx < 0) {
       d.peers.push(got);
