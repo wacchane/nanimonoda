@@ -243,14 +243,15 @@ const bandName = (f, b) => ['とても', 'やや', 'やや', 'とても'][b] + (
 
    名前はこのアプリ独自のもの。よく知られた和名は別サービスの商標なので使わない。 */
 const CODE_NAME = {
-  INTJ: '静かな設計者',      INTP: '理屈の探検家',
-  ENTJ: '仕切りたがりの司令塔', ENTP: '屁理屈の発明家',
-  INFJ: '物静かな理想主義者',  INFP: '夢を抱えた職人',
-  ENFJ: '世話焼きの導き手',    ENFP: '巻き込み型の火種',
-  ISTJ: '抜かりない実務家',    ISFJ: '縁の下の守り手',
-  ESTJ: '現場の仕切り屋',      ESFJ: '面倒見のいい世話役',
-  ISTP: '黙って直す職人',      ISFP: 'マイペースな感覚派',
-  ESTP: '勢いで動く突撃隊',    ESFP: '場を沸かせるムードメーカー'
+  /* 前半2文字は座標盤の位置そのもの。陰陽=外向性、温冷=協調性 */
+  INTJ: '陰冷の策士',      INTP: '陰冷の理屈屋',
+  ISTJ: '陰冷の実務職人',  ISTP: '陰冷の直し屋',
+  INFJ: '陰温の理想家',    INFP: '陰温の夢職人',
+  ISFJ: '陰温の守り手',    ISFP: '陰温のマイペース',
+  ENTJ: '陽冷の司令塔',    ENTP: '陽冷の屁理屈王',
+  ESTJ: '陽冷の仕切り屋',  ESTP: '陽冷の突撃隊',
+  ENFJ: '陽温の世話焼き',  ENFP: '陽温の火種',
+  ESFJ: '陽温の面倒見',    ESFP: '陽温のムードメーカー'
 };
 /* band 2以上を高い側とみなす */
 const codeOf = s =>
@@ -319,6 +320,8 @@ const hiSide = (s, f) => s[f.id].band >= 2 ? 1 : 0;
 
 /* 名前は4文字タイプ + このアプリ独自の和名 */
 const archName = s => CODE_NAME[codeOf(s)];
+/* 4群 = 開放性(N/S) × 協調性(T/F)。結果画面の地の色をこれで切り替える */
+const groupOf = s => codeOf(s).slice(1, 3);
 /* 見出しの下の一言。段階の言葉 + 辛口の一言 */
 function quipLine(s) {
   const [a, b] = standout(s);
@@ -614,6 +617,7 @@ let pending = null;   // 他人を診断した直後の結果（まだ送って�
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
   $(id).classList.add('on');
+  document.documentElement.removeAttribute('data-grp');  /* 結果画面が塗り直す */
   window.scrollTo(0, 0);
 }
 
@@ -763,6 +767,8 @@ function showResult(kind, idx) {
   bf.onclick = showCompare;
   $('btn-other').onclick = goHome;
   show('s-result');
+  /* 地の色を4群で塗り分ける。show() が消したあとに掛け直す */
+  document.documentElement.setAttribute('data-grp', groupOf(s));
 }
 
 /* ===== 共有 ===== */
