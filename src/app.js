@@ -228,40 +228,99 @@ const FCT = id => FACTORS.find(f => f.id === id);
 const BAND_OF = sum => sum <= 1 ? 0 : sum <= 3 ? 1 : sum <= 5 ? 2 : 3;
 const bandName = (f, b) => ['とても', 'やや', 'やや', 'とても'][b] + (b < 2 ? f.lo : f.hi);
 
-/* 因子ごとの読み。4段階それぞれに1行ずつ。
-   **どの因子も「高い側が良い」ではない。** 効き方が場面で変わるだけなので、
-   低い側の記述にも必ず利点を書くこと。 */
-const READ = {
-  e: ['一人の時間で充電するタイプ。大人数の場は消耗が大きく、少人数でこそ本領が出ます。',
-      'にぎやかな場も嫌ではありませんが、長く続くと疲れが出ます。自分のペースを守れると安定します。',
-      '人と関わることで元気が出るほうです。前に出すぎず、場に合わせて動けます。',
-      '人がいるほど調子が上がります。場を開く力がある一方、一人の時間を意図的に取らないと消耗に気づきません。'],
-  a: ['思ったことをそのまま伝えます。判断が速く信頼される一方、言い方ひとつで角が立ちます。',
-      '必要なら遠慮なく言えるほうです。相手を見て加減もできます。',
-      '相手の気持ちを考えて言葉を選びます。対立を避けながら、必要なことは伝えられます。',
-      '波風を立てないことを優先します。人に好かれる一方、言うべきことを飲み込みやすい面があります。'],
-  c: ['細かいことにこだわらず、その場で柔軟に動けます。締切や段取りは苦手なほうです。',
-      'きちんとやるべき場面では合わせられますが、放っておくとゆるみます。',
-      '決めたことは守るほうです。無理のない範囲で計画を立てて動けます。',
-      '段取りと期限を確実に守ります。任せられる一方、自分にも他人にも厳しくなりがちです。'],
-  s: ['周りの空気や出来事に強く反応します。人の変化に気づける反面、揺さぶられると回復に時間がかかります。',
-      '気になることがあると引きずるほうですが、普段は落ち着いています。',
-      'たいていのことには動じません。慌ただしい場面でも判断を保てます。',
-      '何が起きても平静です。危機に強い一方、周りの動揺に気づきにくいことがあります。'],
-  o: ['実際に役立つかで判断します。慣れたやり方を守り、無駄な冒険をしません。',
-      '新しいものにも触れますが、基本は確実なほうを選びます。',
-      '知らないことに興味を持ち、ひとまず試してみるほうです。',
-      '新しいものへ次々と向かいます。発想は豊かな一方、飽きも早い面があります。']
+/* ===== 結果の言葉 =====
+   **書き方の約束: ちょっと辛口に入って、必ず最後は認めて終わる。**
+   friendly に、突き放さない。低い側を欠点として言い切らないこと。
+   どの因子も「高い側が良い」という意味ではない。 */
+
+/* 最も際立つ因子から名前の芯を取る（高い側 / 低い側） */
+const ARCHETYPE = {
+  e: ['観測者', '旗振り役'],
+  a: ['切り込み役', '調整役'],
+  c: ['即興屋', '実行者'],
+  s: ['感応者', '不動の人'],
+  o: ['現場主義者', '立案者']
 };
+/* 2番目に際立つ因子から冠をつける。20語で100通りの名前になる */
+const PREFIX = {
+  e: ['物静かな', '人を巻き込む'],
+  a: ['歯に衣着せない', 'まわりを立てる'],
+  c: ['おおらかな', '几帳面な'],
+  s: ['機微に敏い', '肝の据わった'],
+  o: ['地に足のついた', '好奇心の強い']
+};
+
+/* 見出しの下に出る一言。辛口 → 肯定 の順で必ず閉じる */
+const QUIP = {
+  e: ['誘いを断る言い訳のストックだけは豊富。その代わり、あなたが「行く」と言った場には本当の関心がある。',
+      '盛り上がっている輪の外側で、そろそろ帰りたいと思っているタイプ。それでも必要な場面には必ずいるので、信用はされている。',
+      '誰とでもそこそこうまくやる器用さがある。器用貧乏とも言えるが、それで救われている人が確実にいる。',
+      '黙っていられない性分で、たまに一人で喋りすぎている。ただ、その場を開けるのは他でもないあなただ。'],
+  a: ['正論で人を黙らせがち。ただ、あなたが言わなければ誰も言わないまま終わっていた話も多い。',
+      '言うべきことは言うが、たまに言い方が雑になる。それでも裏表がないぶん、長い目で見れば信用される。',
+      '角を立てずに済ませる技術がある。少し飲み込みすぎる場面もあるが、そのおかげで壊れずに済んだ関係がある。',
+      'いい人と言われ続けて、本音を言うタイミングを逃してきたはず。それでも人が集まるのは、あなたが安全だからだ。'],
+  c: ['締切は目安、持ち物は運任せ。ただ、崩れた場をその場の機転で立て直せるのはこのタイプだけ。',
+      'やる気になれば動けるが、その「やる気」の到着が遅い。それでも土壇場の集中力は本物。',
+      '決めたことは守るし、無理な約束もしない。地味だが、この安定感に何度も助けられている人がいる。',
+      '抜け漏れがないぶん、他人のゆるさが気になって仕方ない。それでも任せれば必ず終わっているのは、あなたのおかげだ。'],
+  s: ['些細なことで消耗し、寝る前に会話を再生してしまうタイプ。その感度があるから、人の不調に最初に気づける。',
+      '引きずるときは引きずるが、翌日には持ち直す。その振れ幅が、人の気持ちを想像できる根拠になっている。',
+      'たいていのことでは動じないので、慌てている人からは他人事に見える。それでも、いてくれると場が落ち着く。',
+      '動じなさすぎて、周りが焦っていることに気づかない。それでも本当にまずい場面で頼れるのは、この落ち着きだ。'],
+  o: ['新しいものに興味を示さず、同じ店で同じものを頼む。その一貫性が、ぶれない判断につながっている。',
+      '試してみるより確実なほうを選ぶ。冒険しないぶん、大きく外すこともない。',
+      '面白そうなものには乗るが、全部は追いかけない。この加減がちょうどいい。',
+      '興味が次々に移り、始めたものが積み上がっているはず。それでも新しい風を持ち込めるのはあなただけだ。']
+};
+
+/* 因子ごとの読み。同じく 辛口 → 肯定 で閉じる */
+const READ = {
+  e: ['一人の時間がないと回復しません。誘いを断ってばかりだと思われがちですが、少人数の場でこそ深い話ができる人です。',
+      'にぎやかな場も嫌ではないのに、長引くと急に無口になります。それでも自分のペースを崩さないので、無理がありません。',
+      '人と関わると元気が出るほうです。前に出すぎないぶん物足りなく見えることもありますが、場に合わせて動ける強みがあります。',
+      '人がいるほど調子が上がります。喋りすぎて後で反省しがちですが、あなたがいないと始まらない場が確実にあります。'],
+  a: ['思ったことをそのまま言うので、たまに空気が凍ります。ただ判断は速く、あなたの率直さを信頼している人は少なくありません。',
+      '必要なら遠慮なく言えます。言い方が足りない場面もありますが、相手を見て加減できる分別も持っています。',
+      '相手の気持ちを考えて言葉を選べます。持ち帰って悩みすぎるきらいはありますが、そのおかげで守られた関係があります。',
+      '波風を立てないことを優先します。言うべきことを飲み込みがちですが、あなたの周りが穏やかなのは偶然ではありません。'],
+  c: ['締切も持ち物も、だいたいで進みます。だらしないと言われることもありますが、その場の機転で切り抜ける力は本物です。',
+      'やるべき場面では合わせられますが、放っておくとゆるみます。裏を返せば、力の抜きどころを知っているということです。',
+      '決めたことは守り、無理な約束もしません。派手さはありませんが、この安定感が周りの前提になっています。',
+      '段取りも期限も確実です。他人のゆるさに苛立ちがちですが、任せれば必ず終わるという信頼はここから来ています。'],
+  s: ['出来事に強く反応し、後から一人で反芻します。消耗は大きいですが、人の不調に最初に気づけるのはこの感度のおかげです。',
+      '気になることは引きずりますが、翌日には戻ってきます。この揺れがあるから、人の気持ちを想像できます。',
+      'たいていのことでは動じません。冷たく見えることもありますが、慌ただしい場面ほど頼りになります。',
+      '何が起きても平静です。周りの動揺に気づかないことがある一方、本当にまずい場面で崩れないのは大きな強みです。'],
+  o: ['慣れたやり方を守り、実際に役立つかで判断します。頭が固いと言われることもありますが、その一貫性が判断のぶれなさになっています。',
+      '新しいものにも触れますが、基本は確実なほうを選びます。地味ですが、大きく外さない選び方です。',
+      '知らないことに興味を持ち、ひとまず試します。全部は追いかけない加減の良さがあります。',
+      '新しいものへ次々に向かいます。飽きるのも早く、やりかけが積み上がりがちですが、新しい風を入れられるのはあなたです。']
+};
+
+/* 10段階の表示値。0〜7 を 1〜10 に写す。
+   **「2/10」のような分母つきで出さないこと。** 劣っているように見える。
+   単に「協調性 2」と置く。 */
+const ten = s10 => Math.round(s10.ratio * 9) + 1;
 
 /* 際立っている因子から並べる。中央（3.5/7）からの距離で測る */
 const standout = s => FACTORS.slice()
   .sort((x, y) => Math.abs(s[y.id].ratio - .5) - Math.abs(s[x.id].ratio - .5));
-/* 見出し。最も際立つ2因子をつなぐ */
-const headline = s => standout(s).slice(0, 2)
-  .map(f => bandName(f, s[f.id].band)).join('で、');
-/* 一覧用の短いラベル。最も際立つ1因子だけ */
-const shortLabel = s => bandName(standout(s)[0], s[standout(s)[0].id].band);
+const hiSide = (s, f) => s[f.id].band >= 2 ? 1 : 0;
+
+/* 名前。1番目の因子で芯を、2番目で冠を決める。20語で100通り */
+function archName(s) {
+  const [a, b] = standout(s);
+  return PREFIX[b.id][hiSide(s, b)] + ARCHETYPE[a.id][hiSide(s, a)];
+}
+/* 見出しの下の一言。段階の言葉 + 辛口の一言 */
+function quipLine(s) {
+  const [a, b] = standout(s);
+  return `${bandName(a, s[a.id].band)}で、${bandName(b, s[b.id].band)}。`
+       + QUIP[a.id][s[a.id].band];
+}
+/* 一覧用の短いラベル */
+const shortLabel = s => archName(s);
 
 const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
@@ -342,7 +401,7 @@ function score(answers) {
    ただしレーダーは面積が値の2乗で効き、差を実際より大きく見せる。
    **数値のバー（readout）を必ず併記すること。** */
 function radarChart(series) {
-  const C = 150, R = 88, N = FACTORS.length;
+  const C = 150, R = 84, N = FACTORS.length;
   const at = (i, t) => {
     const a = (-90 + i * (360 / N)) * Math.PI / 180;
     return [C + Math.cos(a) * R * t, C + Math.sin(a) * R * t];
@@ -350,30 +409,35 @@ function radarChart(series) {
   const poly = t => FACTORS.map((_, i) => at(i, t).join(',')).join(' ');
 
   const grid = [0.25, 0.5, 0.75, 1].map(t =>
-    `<polygon class="hx-grid" points="${poly(t)}"/>`).join('')
+    `<polygon class="rd-grid" points="${poly(t)}"/>`).join('')
     + FACTORS.map((_, i) =>
-      `<line class="hx-grid" x1="${C}" y1="${C}" x2="${at(i,1)[0]}" y2="${at(i,1)[1]}"/>`).join('');
+      `<line class="rd-grid" x1="${C}" y1="${C}" x2="${at(i,1)[0]}" y2="${at(i,1)[1]}"/>`).join('');
 
   const shapes = series.map(sr => {
     const pts = FACTORS.map((f, i) => at(i, sr.s[f.id].ratio).join(',')).join(' ');
-    return `<polygon points="${pts}" fill="${sr.color}" fill-opacity=".16"
-              stroke="${sr.color}" stroke-width="1.8" stroke-linejoin="round"/>`
+    return `<polygon points="${pts}" fill="${sr.color}" fill-opacity=".18"
+              stroke="${sr.color}" stroke-width="2" stroke-linejoin="round"/>`
       + FACTORS.map((f, i) => { const [x, y] = at(i, sr.s[f.id].ratio);
-          return `<circle cx="${x}" cy="${y}" r="3" fill="${sr.color}"/>`; }).join('');
+          return `<circle cx="${x}" cy="${y}" r="3.4" fill="${sr.color}"/>`; }).join('');
   }).join('');
 
+  /* 頂点のラベル。因子名の下に10段階の数値を大きく置く。
+     分母は出さない（「2/10」だと劣って見えるため） */
+  const first = series[0];
   const labels = FACTORS.map((f, i) => {
-    const [lx, ly] = at(i, 1.19);
+    const [lx, ly] = at(i, 1.26);
     const anchor = Math.abs(lx - C) < 6 ? 'middle' : (lx > C ? 'start' : 'end');
-    return `<text class="hx-lab" x="${lx}" y="${ly}" text-anchor="${anchor}"
-              dy=".35em">${f.name}</text>`;
+    const num = first ? `<tspan class="rd-num" x="${lx}" dy="1.25em">${ten(first.s[f.id])}</tspan>` : '';
+    return `<text class="rd-lab" x="${lx}" y="${ly}" text-anchor="${anchor}">
+      <tspan x="${lx}">${f.name}</tspan>${num}</text>`;
   }).join('');
 
-  return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="5因子のレーダー">
+  return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="5因子のかたち">
     <style>
-      .hx-grid{fill:none;stroke:var(--grid);stroke-width:1}
-      .hx-lab{font-family:var(--sans);font-size:10.5px;font-weight:600;
+      .rd-grid{fill:none;stroke:var(--rd-web);stroke-width:1}
+      .rd-lab{font-family:var(--sans);font-size:10.5px;font-weight:600;
         fill:var(--ink-70);letter-spacing:.02em}
+      .rd-num{font-size:15px;font-weight:600;fill:var(--rd-num)}
     </style>
     ${grid}${shapes}${labels}
   </svg>`;
@@ -487,10 +551,10 @@ function field(id) {
     <line class="fx-axis" x1="150" y1="28" x2="150" y2="272"/>
     <line class="fx-axis" x1="28" y1="150" x2="272" y2="150"/>
   </g>
-  <text class="fx-lab" x="150" y="19"  text-anchor="middle">協調</text>
-  <text class="fx-lab" x="150" y="291" text-anchor="middle">率直</text>
-  <text class="fx-lab" x="22" y="155" text-anchor="middle">内向</text>
-  <text class="fx-lab" x="278" y="155" text-anchor="middle">外向</text>`;
+  <text class="fx-lab" x="150" y="19"  text-anchor="middle">温</text>
+  <text class="fx-lab" x="150" y="291" text-anchor="middle">冷</text>
+  <text class="fx-lab" x="22" y="155" text-anchor="middle">陰</text>
+  <text class="fx-lab" x="278" y="155" text-anchor="middle">陽</text>`;
 }
 
 /* プロットは 28〜272。四辺に残した28は軸ラベルの居場所で、これ以上は詰められない */
@@ -513,7 +577,7 @@ function dot(x, y, col, r) {
    ライト配色では濃い紫になり、光ではなく影として描かれて沈む。
    発光する色は配色に依らず固定値で持つ。 */
 const COL = {
-  self: { core: '#C79BFF', near: 'rgba(190,140,255,1)', glow: '#8A4DFF' },
+  self: { core: '#C79BFF', near: 'rgba(190,140,255,1)', glow: '#8A4DFF', glowSolid: '#A56BFF' },
   peer: { core: '#FFFFFF', near: 'rgba(255,255,255,.95)', glow: '#FFFFFF' }
 };
 
@@ -614,7 +678,7 @@ function renderQ() {
   const picked = answers[i];
   $('qmeta').textContent = `${m.name} ${String(i + 1).padStart(2, '0')}/${QS.length}`;
   $('bar').style.width = ((i + 1) / QS.length * 100) + '%';
-  $('qno').textContent = `Q${String(i + 1).padStart(2, '0')} — ${FCT(q.f).name}`;
+  $('qno').textContent = `Q${String(i + 1).padStart(2, '0')}`;
   $('qtext').textContent = m.kind === 'peer' ? 'この人に近いのはどちら？' : '自分に近いのはどちら？';
   $('opts').innerHTML = q[m.qk].map((t, v) => `
     <button class="btn opt ${v === picked ? 'sel' : ''}" data-v="${v}"
@@ -669,11 +733,10 @@ function showResult(kind, idx) {
   const s = rec.s, isPeer = kind === 'peer';
 
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
-  $('r-name').textContent = headline(s);
-  $('r-catch').textContent = FACTORS.map(f => f.name).join(' · ');
-  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer : COL.self, s }]);
+  $('r-name').textContent = archName(s);
+  $('r-catch').textContent = quipLine(s);
+  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer.core : COL.self.glowSolid, s }]);
   $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
-  $('r-readout').innerHTML = readout(s);
   /* 際立っている順に、因子ごとの読みを並べる */
   $('r-body').innerHTML = standout(s).map(f => `
     <div class="fread">
@@ -711,15 +774,15 @@ async function shareOut({ title, text, url }, okMsg) {
 }
 
 function shareResult(s) {
-  const text = `私は「${headline(s)}」\n`
-    + FACTORS.map(f => `${f.name} ${bandName(f, s[f.id].band)}`).join('\n')
+  const text = `私は「${archName(s)}」\n`
+    + FACTORS.map(f => `${f.name} ${ten(s[f.id])}`).join(' / ')
     + `\n— 何者だ`;
   shareOut({ title: '何者だ', text }, 'コピーしました');
 }
 
 /* ===== 他人を診断した結果を送る ===== */
 function showPeerSend() {
-  $('p-name').textContent = headline(pending.s);
+  $('p-name').textContent = archName(pending.s);
   $('p-catch').textContent = 'この人はこう見えました';
   $('p-map').innerHTML = drawFlat([{ color: COL.peer, s: pending.s }], 'p');
   $('p-link').hidden = true;
@@ -737,7 +800,7 @@ function peerLink() {
 /* ===== 受け取り ===== */
 function showInbox(peer, idx) {
   $('i-title').textContent = `${peer.nick}から見たあなた`;
-  $('i-catch').textContent = headline(peer.s);
+  $('i-catch').textContent = quipLine(peer.s);
   $('i-map').innerHTML = drawFlat([{ color: COL.peer, s: peer.s }], 'i');
   $('i-readout').innerHTML = readout(peer.s);
   $('i-note').textContent = PEER_NOTE;
@@ -808,7 +871,7 @@ function gapCard(me, agg, n) {
   return `<div class="card-x">
     <div class="k">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
-    ${radarChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
+    ${radarChart([{ color: COL.self.glowSolid, s: me }, { color: COL.peer.core, s: agg }])}
     <div class="hexleg">
       <span><i style="background:${COL.self.core}"></i>自己評価</span>
       <span><i style="background:${COL.peer.core}"></i>他己評価 総合</span>
