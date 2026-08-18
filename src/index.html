@@ -21,7 +21,7 @@
    面の浮き沈みが読めなくなる。
    =========================================================== */
 :root{
-  --bg:var(--bg-l,#FFFFFF);   /* 群がなければ白 */
+  --bg:#FFFFFF;
   --ink:#12172B;
   --ink-70:rgba(18,23,43,.68);
   --ink-45:rgba(18,23,43,.44);
@@ -47,6 +47,8 @@
   --lab:#FFFFFF;    /* 濃い地の上に載る軸ラベル */
   /* 五角形レーダー。色面用の --grid では薄すぎて沈むので専用に持つ */
   --rd-web:rgba(138,77,255,.30); --rd-num:#7A3FE0;
+  /* 4文字コードの文字色。開放性(N/S) × 協調性(T/F) の4群 */
+  --g-nt:#6D33D6; --g-st:#1F6FD0; --g-sf:#A07405; --g-nf:#0F7E55;
   /* 座標盤の四隅の色。左上=温×陰 / 右上=温×陽 / 左下=冷×陰 / 右下=冷×陽 */
   --c-tl:#C9457E; --c-tr:#F07B2E; --c-bl:#4356BE; --c-br:#23A2B8;
   --star:0;         /* 星は暗いときだけ出す */
@@ -58,13 +60,13 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:var(--bg-d,#0D1428);   /* 群がなければミッドナイトブルー */
+    --bg:#0D1428;
     --ink:#E6ECF8;
     --ink-70:rgba(230,236,248,.66);
     --ink-45:rgba(230,236,248,.42);
     --ink-25:rgba(230,236,248,.22);
 
-    --hl:var(--hl-d,rgba(76,99,158,.30));
+    --hl:rgba(76,99,158,.30);
     --sd:rgba(2,5,14,.78);
     --sd-soft:rgba(2,5,14,.55);
 
@@ -79,6 +81,7 @@
     --grid:rgba(255,255,255,.26);
     --axis:rgba(255,255,255,.44);
     --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
+    --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
     --wash:.82;
     --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
     --star:1;
@@ -86,13 +89,13 @@
   }
 }
 :root[data-theme="dark"]{
-  --bg:var(--bg-d,#0D1428);
+  --bg:#0D1428;
   --ink:#E6ECF8;
   --ink-70:rgba(230,236,248,.66);
   --ink-45:rgba(230,236,248,.42);
   --ink-25:rgba(230,236,248,.22);
 
-  --hl:var(--hl-d,rgba(76,99,158,.30));
+  --hl:rgba(76,99,158,.30);
   --sd:rgba(2,5,14,.78);
   --sd-soft:rgba(2,5,14,.55);
 
@@ -107,27 +110,12 @@
   --grid:rgba(255,255,255,.26);
   --axis:rgba(255,255,255,.44);
   --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
+  --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
   --wash:.82;
   --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
   --star:1;
   --plate:#0D1428;
 }
-
-/* 結果画面だけ、4群で地の色を変える。開放性(N/S) × 協調性(T/F)。
-   **背景も面も同じ --bg を見ているので、変えても両者は同色のまま。**
-   ニューモーフィズムは面と背景が同色であることが前提なので、
-   ここを分けた瞬間に影だけで浮かせる表現が壊れる。
-
-   **混色ではなく、配色ごとの色を直に置くこと。** 暗い青の地に黄を混ぜても
-   黄にはならず、彩度が抜けて濁る（座標盤の地で同じ失敗をしている）。 */
-:root[data-grp="NT"]{  /* 紫 */
-  --bg-l:#F0EAFB; --bg-d:#191036; --hl-d:rgba(122,92,206,.28)}
-:root[data-grp="ST"]{  /* 青 */
-  --bg-l:#E9F1FB; --bg-d:#0A1A34; --hl-d:rgba(76,120,190,.30)}
-:root[data-grp="SF"]{  /* 黄 */
-  --bg-l:#FBF3DF; --bg-d:#241C0A; --hl-d:rgba(168,136,62,.26)}
-:root[data-grp="NF"]{  /* 緑 */
-  --bg-l:#E7F4EC; --bg-d:#0C2018; --hl-d:rgba(70,150,110,.26)}
 
 /* 影の合成 — 個別に box-shadow を手書きせず、必ずここを使う */
 :root{
@@ -320,7 +308,12 @@ body::before{
 /* ===== 結果 ===== */
 .rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
 .rname{font-size:clamp(24px,7vw,30px);line-height:1.35;letter-spacing:.05em;font-weight:600}
-.rname .code{display:block;font-size:13px;letter-spacing:.28em;color:#A56BFF;margin-bottom:6px}
+.rname .code{display:block;font-size:13px;letter-spacing:.28em;margin-bottom:6px;
+  color:var(--gc,var(--rd-num))}
+.code[data-grp="NT"]{--gc:var(--g-nt)}
+.code[data-grp="ST"]{--gc:var(--g-st)}
+.code[data-grp="SF"]{--gc:var(--g-sf)}
+.code[data-grp="NF"]{--gc:var(--g-nf)}
 .rcatch{font-size:13px;color:var(--ink-70);margin-top:10px;letter-spacing:.02em}
 
 /* 座標盤は面にはめ込んだ窪みとして置く */
