@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>何者だ — ビッグファイブで見る役職適性</title>
-<meta name="description" content="ビッグファイブを35問の二択で測り、代表・副代表・イベント係への向きを出します。自己評価と他己評価のずれも見られます。">
+<title>何者だ — ビッグファイブ性格診断</title>
+<meta name="description" content="ビッグファイブ（外向性・協調性・誠実性・情緒安定性・開放性）を35問の二択で測ります。自己評価と他己評価のずれも見られます。">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -301,7 +301,13 @@ body::before{
 
 .mapcap{font-size:10.5px;color:var(--ink-45);letter-spacing:.03em;line-height:1.6;
   text-align:center;margin-top:11px}
-.rbody{margin-top:28px;font-size:14px;line-height:1.95}
+.rbody{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.fread{padding:15px 17px;border-radius:var(--r-sm);box-shadow:var(--out-sm)}
+.fread .fh{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.fread .fh b{font-size:13px;font-weight:600;letter-spacing:.03em}
+.fread .fh span{font-size:12px;color:var(--cat-b);font-weight:600}
+.fread .fh i{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--ink-25)}
+.fread p{font-size:13px;line-height:1.9;color:var(--ink-70)}
 
 /* 役職適性のバー */
 .hexwrap{margin-top:14px;padding:6px 4px 0;border-radius:22px;box-shadow:var(--in)}
@@ -405,13 +411,13 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
   <!-- 表紙 -->
   <section id="s-home" class="screen on">
-    <h1>何者だ<span class="sub">ビッグファイブで見る役職適性</span></h1>
+    <h1>何者だ<span class="sub">ビッグファイブ性格診断</span></h1>
     <div class="dial">
       <div class="d-sun"><b>外向</b>人と関わる</div>
       <div class="d-warm"><b>協調</b>人に合わせる</div>
       <div class="d-firm"><b>誠実</b>きっちり運ぶ</div>
     </div>
-    <p class="lede">ビッグファイブ（外向性・協調性・誠実性・情緒安定性・開放性）を35問の二択で測ります。<br>そのうえで<b>代表・副代表・イベント係</b>への向きが並びます。他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
+    <p class="lede">ビッグファイブ（外向性・協調性・誠実性・情緒安定性・開放性）を35問の二択で測ります。<br>5角形のグラフと、因子ごとの読みが出ます。他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
 
     <p class="eyebrow">診断する</p>
     <div class="cats" id="menu"></div>
@@ -445,14 +451,12 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <p class="rlabel" id="r-cat"></p>
     <h2 class="rname" id="r-name"></h2>
     <p class="rcatch" id="r-catch"></p>
-    <div class="mapwrap"><div id="r-map"></div></div>
-    <div class="readout" id="r-readout"></div>
-    <div class="rbody" id="r-body"></div>
-    <p class="eyebrow" style="margin-top:30px">5因子のかたち</p>
     <div id="r-hex" class="hexwrap"></div>
-    <p class="eyebrow" style="margin-top:26px">役職への向き</p>
-    <div class="fit" id="r-fit"></div>
-    <p class="fittop" id="r-fittop"></p>
+    <div class="readout" id="r-readout"></div>
+    <p class="eyebrow" style="margin-top:30px">外向性 × 協調性</p>
+    <div class="mapwrap"><div id="r-map"></div></div>
+    <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
+    <div class="rbody" id="r-body"></div>
     <p class="note" id="r-note"></p>
     <div class="acts">
       <button class="btn primary" id="btn-front" hidden>自己評価と他己評価を比べる</button>

@@ -228,69 +228,42 @@ const FCT = id => FACTORS.find(f => f.id === id);
 const BAND_OF = sum => sum <= 1 ? 0 : sum <= 3 ? 1 : sum <= 5 ? 2 : 3;
 const bandName = (f, b) => ['とても', 'やや', 'やや', 'とても'][b] + (b < 2 ? f.lo : f.hi);
 
-/* ===== 役職 =====
-   適性は5因子の重み付き合計で出す。設問は性格を聞き、役職は結果から導く。
-   会計係・施設係は診断から外した。あの2役に要るのは適性より実績で、指名制のほうが確実。
+/* 因子ごとの読み。4段階それぞれに1行ずつ。
+   **どの因子も「高い側が良い」ではない。** 効き方が場面で変わるだけなので、
+   低い側の記述にも必ず利点を書くこと。 */
+const READ = {
+  e: ['一人の時間で充電するタイプ。大人数の場は消耗が大きく、少人数でこそ本領が出ます。',
+      'にぎやかな場も嫌ではありませんが、長く続くと疲れが出ます。自分のペースを守れると安定します。',
+      '人と関わることで元気が出るほうです。前に出すぎず、場に合わせて動けます。',
+      '人がいるほど調子が上がります。場を開く力がある一方、一人の時間を意図的に取らないと消耗に気づきません。'],
+  a: ['思ったことをそのまま伝えます。判断が速く信頼される一方、言い方ひとつで角が立ちます。',
+      '必要なら遠慮なく言えるほうです。相手を見て加減もできます。',
+      '相手の気持ちを考えて言葉を選びます。対立を避けながら、必要なことは伝えられます。',
+      '波風を立てないことを優先します。人に好かれる一方、言うべきことを飲み込みやすい面があります。'],
+  c: ['細かいことにこだわらず、その場で柔軟に動けます。締切や段取りは苦手なほうです。',
+      'きちんとやるべき場面では合わせられますが、放っておくとゆるみます。',
+      '決めたことは守るほうです。無理のない範囲で計画を立てて動けます。',
+      '段取りと期限を確実に守ります。任せられる一方、自分にも他人にも厳しくなりがちです。'],
+  s: ['周りの空気や出来事に強く反応します。人の変化に気づける反面、揺さぶられると回復に時間がかかります。',
+      '気になることがあると引きずるほうですが、普段は落ち着いています。',
+      'たいていのことには動じません。慌ただしい場面でも判断を保てます。',
+      '何が起きても平静です。危機に強い一方、周りの動揺に気づきにくいことがあります。'],
+  o: ['実際に役立つかで判断します。慣れたやり方を守り、無駄な冒険をしません。',
+      '新しいものにも触れますが、基本は確実なほうを選びます。',
+      '知らないことに興味を持ち、ひとまず試してみるほうです。',
+      '新しいものへ次々と向かいます。発想は豊かな一方、飽きも早い面があります。']
+};
 
-   副代表は「仕切り役」と「盛り上げ役」の2枠あるが、表示は `副代表` の1つに畳む。 */
-const ROLE_LABELS = ['代表', '副代表', 'イベント係'];
-const ROLES = [
-  { label: '代表',       kind: '',           w: { e: 3, a: -1, c: 2, s: 3, o: 1 },
-    d: 'チームの代表として全体を俯瞰し、決める役。前に立てること、情に流されないこと、そして揉めごとが起きても動じないことが要ります。' },
-  { label: '副代表',     kind: '仕切り役',   w: { e: 1, a: -2, c: 4, s: 2, o: 0 },
-    d: '実行部隊の仕切り側。練習の中身と時間を締める役で、前に立つ力より現場を回し切る力が要ります。' },
-  { label: '副代表',     kind: '盛り上げ役', w: { e: 4, a: 3,  c: 0, s: 1, o: 1 },
-    d: '実行部隊の盛り上げ側。その場のテンションを上げて、人が離れないようにする役です。' },
-  { label: 'イベント係', kind: '',           w: { e: 1, a: 3,  c: 3, s: 0, o: 2 },
-    d: '皆が楽しめるイベントを企画して運営する役。誰が楽しめていないかに気づける温かさと、形にする段取り力の両方が要ります。' }
-];
+/* 際立っている因子から並べる。中央（3.5/7）からの距離で測る */
+const standout = s => FACTORS.slice()
+  .sort((x, y) => Math.abs(s[y.id].ratio - .5) - Math.abs(s[x.id].ratio - .5));
+/* 見出し。最も際立つ2因子をつなぐ */
+const headline = s => standout(s).slice(0, 2)
+  .map(f => bandName(f, s[f.id].band)).join('で、');
+/* 一覧用の短いラベル。最も際立つ1因子だけ */
+const shortLabel = s => bandName(standout(s)[0], s[standout(s)[0].id].band);
 
-/* 16タイプ（外向性 × 協調性）。エンタメとしての人物像で、役職適性とは別系統。
-   TYPES[外向性band][協調性band]、0 = とても内向的 / とても率直 */
-const TYPES = [
-  [ /* 強い陰 */
-    { n:'完全論理体',      c:'感情の外側で考える人',
-      d:'ぶれない判断基準を持ち、周囲が揺れているときほど価値が出ます。伝え方に一手間かけると、その正しい判断が実際に通るようになります。' },
-    { n:'孤高の研究者',    c:'一人で深く潜る人',
-      d:'集団の力学より、対象そのものへの興味が勝つタイプ。人脈ではなく専門性で信頼を積み上げていきます。' },
-    { n:'一途な夢想家',    c:'自分の世界を持っている人',
-      d:'広く浅くではなく、狭く深く関わります。数は多くないぶん、合う相手との結びつきは誰よりも強くなります。' },
-    { n:'秘めた博愛主義者', c:'静かに気にかけている人',
-      d:'表には出しませんが、人のことをよく考えています。伝えないと伝わらないので、言葉にする回数を少し増やすだけで印象が変わります。' }
-  ],
-  [ /* やや陰 */
-    { n:'寡黙な観測者',    c:'見えている人',
-      d:'発言は少なくても、場の力学を正確に把握しています。聞かれたときに出す一言の精度が高く、そこで評価が決まります。' },
-    { n:'職人肌の分析家',  c:'静かに正解を出す人',
-      d:'表に出ないところで筋道を立てるのが得意。前に立つより、決める人の隣で判断材料を作る位置で最も活きます。' },
-    { n:'静かな癒し系',    c:'いるだけで空気が緩む人',
-      d:'主張は強くありませんが、その場にいる安心感が集団を支えています。存在そのものが機能しているタイプです。' },
-    { n:'縁の下の聞き上手', c:'一対一で本音を引き出す人',
-      d:'大人数では目立ちませんが、1対1での傾聴力は随一。不満が爆発する前に拾えます。最も過小評価されているタイプです。' }
-  ],
-  [ /* やや陽 */
-    { n:'クールな仕切り役', c:'淡々と回す人',
-      d:'感情の起伏に左右されず、決めるべきことを決められます。冷たいと誤解されやすいので、判断の意図を言葉にすると評価が変わります。' },
-    { n:'切れ者の交渉人',  c:'筋を通しながら通す人',
-      d:'論理で組み立てながら、相手の面子も潰さない。前に立つ役とまとめる役を一人で兼ねられる希少なタイプです。' },
-    { n:'愛されいじられ役', c:'誰とでも組める人',
-      d:'極端さがないぶん、どのタイプの相手とも噛み合います。目立ちませんが、組織が大きくなるほど効いてくる万能型です。' },
-    { n:'世話焼き幹事',    c:'気づいたら手を挙げている人',
-      d:'程よい社交性と強い配慮で、集団の潤滑油になります。頼まれごとを断りにくく、抱え込みやすいのが弱点です。' }
-  ],
-  [ /* 強い陽 */
-    { n:'カリスマ司令塔',  c:'決める人',
-      d:'迷いのない判断と発信力で場を引っ張ります。危機や立て直しでは最強クラスですが、平時に長く続くと周囲が消耗します。温かい人を横に置くと本領が出ます。' },
-    { n:'陽気な策士',      c:'笑いながら決めていく人',
-      d:'巻き込む力と、情に流されない判断力の両方を持っています。全員にとって最善ではない選択でも、説明して通せるタイプです。' },
-    { n:'ムードメーカー',  c:'空気が重くなると動く人',
-      d:'沈黙や気まずさに人一倍敏感で、気づけば場を回しています。盛り上げは得意な一方、対立の調停より雰囲気の維持に流れやすい面があります。' },
-    { n:'太陽キャ',        c:'その場の温度を上げる人',
-      d:'場を明るくしながら、一人ひとりの機嫌まで見ています。人が自然と集まってくるぶん、気を配りすぎて自分の消耗に気づきにくいので注意。' }
-  ]
-];
-
-const ROLE_NOTE = 'この結果は「なりやすさ」であって「うまくやれるか」ではありません。外向性はリーダーに選ばれやすさとは相関しますが、成果との相関は弱いことが知られています。適性が低く出た役職は向いていないのではなく、候補に挙がりにくいだけ、という場合が多くあります。';
+const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
 const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
@@ -362,20 +335,6 @@ function score(answers) {
   return out;
 }
 
-const typeOf = s => TYPES[s.e.band][s.a.band];
-
-/* 役職適性。各因子を -1〜+1 に直して重み付き合計し、0〜100 に均す */
-function fitOf(s, w) {
-  let raw = 0, max = 0;
-  FACTORS.forEach(f => {
-    const wt = w[f.id] || 0;
-    if (!wt) return;
-    raw += wt * (s[f.id].ratio * 2 - 1);
-    max += Math.abs(wt);
-  });
-  return max ? Math.round(((raw / max + 1) / 2) * 100) : 50;
-}
-
 /* ===== 五角形（ビッグファイブのレーダー） =====
    5因子はちょうど正五角形に収まる。**因子どうしは互いに独立**なので、
    6役職を並べていた頃と違って、形がそのまま5つの情報を表す。
@@ -418,15 +377,6 @@ function radarChart(series) {
     </style>
     ${grid}${shapes}${labels}
   </svg>`;
-}
-
-/* 表示用。副代表は2枠を高いほうに畳んでから、適性の高い順に並べる */
-function roleFits(s) {
-  const all = ROLES.map(r => ({ ...r, v: fitOf(s, r.w) }));
-  return ROLE_LABELS
-    .map(label => all.filter(r => r.label === label)
-                     .reduce((a, b) => (b.v > a.v ? b : a)))
-    .sort((a, b) => b.v - a.v);
 }
 
 /* ===== 共有リンク =====
@@ -612,7 +562,7 @@ function renderHome() {
       <span class="dot"></span>
       <span class="no">${String(i + 1).padStart(2, '0')}</span>
       <span class="nm">${m.name}</span>
-      <span class="meta">${done ? typeOf(d.self.s).n : m.hint}</span>
+      <span class="meta">${done ? shortLabel(d.self.s) : m.hint}</span>
     </button>`;
   }).join('');
   document.querySelectorAll('[data-mode]').forEach(b =>
@@ -630,7 +580,7 @@ function renderHome() {
       <button class="btn card done" data-peer="${i}">
         <span class="dot c"></span>
         <span class="nm">${esc(p.nick)}</span>
-        <span class="meta">${typeOf(p.s).n}</span>
+        <span class="meta">${shortLabel(p.s)}</span>
       </button>`).join('');
     document.querySelectorAll('[data-peer]').forEach(b =>
       b.onclick = () => showResult('peer', +b.dataset.peer));
@@ -711,40 +661,32 @@ const readout = (s, exact = true) => FACTORS.map(f => `
     <span class="fn">${exact ? s[f.id].sum : s[f.id].sum.toFixed(1)}/${s[f.id].max}</span>
   </div>`).join('');
 
-const fitBars = fits => fits.map((f, i) => `
-  <div class="fitrow ${i === 0 ? 'top' : ''}">
-    <span class="fl">${f.label}${f.kind ? `<em>${f.kind}</em>` : ''}</span>
-    <span class="fb"><i style="width:${f.v}%"></i></span>
-    <span class="fv">${f.v}</span>
-  </div>`).join('');
-
 /* ===== 結果 ===== */
 function showResult(kind, idx) {
   const d = store.load();
   const rec = kind === 'peer' ? d.peers[idx] : d.self;
   if (!rec) { renderHome(); return show('s-home'); }
-  const s = rec.s, t = typeOf(s), isPeer = kind === 'peer';
-  const fits = roleFits(s);
+  const s = rec.s, isPeer = kind === 'peer';
 
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
-  $('r-name').textContent = t.n;
-  $('r-catch').textContent = t.c;
+  $('r-name').textContent = headline(s);
+  $('r-catch').textContent = FACTORS.map(f => f.name).join(' · ');
+  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer : COL.self, s }]);
   $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
   $('r-readout').innerHTML = readout(s);
-  $('r-body').textContent = t.d;
-  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer : COL.self, s }]);
-  $('r-fit').innerHTML = fitBars(fits);
-  /* 全部低く出た人に、いちばん高いだけの役職を勧めたように読ませない */
-  const head = fits[0].v < 50
-    ? `どの役職も高くは出ませんでした。そのなかで比較的近いのは${fits[0].label}${fits[0].kind ? `（${fits[0].kind}）` : ''}です。`
-    : `${fits[0].label}${fits[0].kind ? `（${fits[0].kind}）` : ''} — `;
-  $('r-fittop').textContent = head + fits[0].d;
+  /* 際立っている順に、因子ごとの読みを並べる */
+  $('r-body').innerHTML = standout(s).map(f => `
+    <div class="fread">
+      <div class="fh"><b>${f.name}</b><span>${bandName(f, s[f.id].band)}</span>
+        <i>${s[f.id].sum}/${s[f.id].max}</i></div>
+      <p>${READ[f.id][s[f.id].band]}</p>
+    </div>`).join('');
   $('r-note').textContent = isPeer ? PEER_NOTE : ROLE_NOTE;
 
   $('btn-share').hidden = isPeer;
   $('btn-again').hidden = isPeer;
   if (!isPeer) {
-    $('btn-share').onclick = () => shareResult(t, s, fits);
+    $('btn-share').onclick = () => shareResult(s);
     $('btn-again').onclick = () => start('self');
   }
   const bf = $('btn-front');
@@ -768,18 +710,17 @@ async function shareOut({ title, text, url }, okMsg) {
   } catch (e) { toast('共有できませんでした'); return false; }
 }
 
-function shareResult(t, s, fits) {
-  const text = `私は「${t.n}」\n`
-    + FACTORS.map(f => `${f.name} ${bandName(f, s[f.id].band)}`).join(' / ')
-    + `\n向いている役職: ${fits[0].label}（${fits[0].v}）\n— 何者だ`;
+function shareResult(s) {
+  const text = `私は「${headline(s)}」\n`
+    + FACTORS.map(f => `${f.name} ${bandName(f, s[f.id].band)}`).join('\n')
+    + `\n— 何者だ`;
   shareOut({ title: '何者だ', text }, 'コピーしました');
 }
 
 /* ===== 他人を診断した結果を送る ===== */
 function showPeerSend() {
-  const t = typeOf(pending.s);
-  $('p-name').textContent = t.n;
-  $('p-catch').textContent = t.c;
+  $('p-name').textContent = headline(pending.s);
+  $('p-catch').textContent = 'この人はこう見えました';
   $('p-map').innerHTML = drawFlat([{ color: COL.peer, s: pending.s }], 'p');
   $('p-link').hidden = true;
   $('p-link').textContent = '';
@@ -795,9 +736,8 @@ function peerLink() {
 
 /* ===== 受け取り ===== */
 function showInbox(peer, idx) {
-  const t = typeOf(peer.s);
   $('i-title').textContent = `${peer.nick}から見たあなた`;
-  $('i-catch').textContent = `${t.n} — ${t.c}`;
+  $('i-catch').textContent = headline(peer.s);
   $('i-map').innerHTML = drawFlat([{ color: COL.peer, s: peer.s }], 'i');
   $('i-readout').innerHTML = readout(peer.s);
   $('i-note').textContent = PEER_NOTE;
@@ -825,14 +765,14 @@ function showCompare() {
   $('c-legend').innerHTML = `
     <button class="btn lg" data-open="self">
       <span class="sw" style="background:${COL.self.core}"></span>
-      <span class="nm">自己評価</span><span class="ty">${typeOf(me).n}</span><span class="go">›</span></button>
+      <span class="nm">自己評価</span><span class="ty">${shortLabel(me)}</span><span class="go">›</span></button>
     <div class="lg flat">
       <span class="sw" style="background:${COL.peer.core}"></span>
-      <span class="nm">他己評価 総合</span><span class="ty">${typeOf(agg).n}（${n}件の平均）</span></div>
+      <span class="nm">他己評価 総合</span><span class="ty">${shortLabel(agg)}（${n}件の平均）</span></div>
     ${d.peers.map((p, i) => `
     <button class="btn lg sub" data-open="peer:${i}">
       <span class="sw" style="background:${COL.peer.core};opacity:.5"></span>
-      <span class="nm">${esc(p.nick)}</span><span class="ty">${typeOf(p.s).n}</span><span class="go">›</span></button>`).join('')}`;
+      <span class="nm">${esc(p.nick)}</span><span class="ty">${shortLabel(p.s)}</span><span class="go">›</span></button>`).join('')}`;
   document.querySelectorAll('#c-legend [data-open]').forEach(b =>
     b.onclick = () => {
       const [kind, key] = b.dataset.open.split(':');
@@ -840,7 +780,7 @@ function showCompare() {
     });
 
   $('c-readout').innerHTML = readout(agg, false);
-  $('c-cards').innerHTML = gapCard(me, agg, n) + fitCompare(me, agg);
+  $('c-cards').innerHTML = gapCard(me, agg, n);
   show('s-compare');
 }
 
@@ -868,32 +808,16 @@ function gapCard(me, agg, n) {
   return `<div class="card-x">
     <div class="k">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
+    ${radarChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
+    <div class="hexleg">
+      <span><i style="background:${COL.self.core}"></i>自己評価</span>
+      <span><i style="background:${COL.peer.core}"></i>他己評価 総合</span>
+    </div>
     <div class="delta">${FACTORS.map(f => `
       <div><span class="dk">${f.name}</span>
         <span class="dv">自己 ${Math.round(me[f.id].ratio * 100)}% → 他己 ${Math.round(agg[f.id].ratio * 100)}%
           <b>${sign(Math.round((agg[f.id].ratio - me[f.id].ratio) * 100))}</b></span></div>`).join('')}</div>
     <p class="sub-note">${PEER_NOTE}</p></div>`;
-}
-
-function fitCompare(me, agg) {
-  const a = roleFits(me), b = roleFits(agg);
-  const same = a[0].label === b[0].label;
-  return `<div class="card-x">
-    <div class="k">向いている役職の見え方</div>
-    ${radarChart([{ color: COL.self, s: me }, { color: COL.peer, s: agg }])}
-    <div class="hexleg">
-      <span><i style="background:${COL.self}"></i>自己評価</span>
-      <span><i style="background:${COL.peer}"></i>他己評価 総合</span>
-    </div>
-    <div class="v">${same ? '自他で一致' : '自他でずれ'}</div>
-    <div class="d">${same
-      ? `自分から見ても周りから見ても、最も向いているのは<b>${a[0].label}</b>でした。ここが一致しているのは、その役を任されたときに摩擦が起きにくいという意味です。`
-      : `自分では<b>${a[0].label}</b>が最も高く出ましたが、周りからは<b>${b[0].label}</b>に見えています。どちらが正しいという話ではなく、<b>引き受ける前に擦り合わせておくべき差</b>です。`}</div>
-    <div class="delta">${ROLE_LABELS.map(label => {
-      const x = a.find(r => r.label === label), y = b.find(r => r.label === label);
-      return `<div><span class="dk">${label}</span>
-        <span class="dv">自己 ${x.v} → 他己 ${y.v} <b>${sign(y.v - x.v)}</b></span></div>`;
-    }).join('')}</div></div>`;
 }
 
 /* ===== イベント ===== */
