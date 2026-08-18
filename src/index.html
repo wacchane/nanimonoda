@@ -244,7 +244,6 @@ body::before{
 .dial b{display:block;font-size:18px;letter-spacing:.08em;margin-bottom:3px;font-weight:600}
 .d-sun b{color:var(--sun)} .d-shade b{color:var(--shade)}
 .d-warm b{color:var(--warm)} .d-cold b{color:var(--cold)}
-.d-firm b{color:var(--cat-b)}
 .lede{color:var(--ink-70);font-size:13px;margin:24px 0 30px;line-height:1.95}
 .lede b{font-weight:600;color:var(--ink)}
 .cnt{font-size:10.5px;color:var(--ink-25);letter-spacing:.06em}
@@ -303,18 +302,9 @@ body::before{
 .opt,.opt:hover,.opt:active{box-shadow:none;transform:none}
 .opt.sel::after{background:color-mix(in srgb,var(--cat-b) 12%,var(--bg))}
 .opt.sel{color:var(--cat-b);font-weight:600}
-.opt .gauge{
-  display:flex;gap:3px;flex:none;padding:6px 7px;border-radius:9px;
-  box-shadow:inset -2px -2px 4px var(--hl),inset 2px 2px 4px var(--sd);
-}
-.opt .gauge i{width:4px;height:14px;border-radius:2px;background:var(--ink-25);transition:background .2s}
-.opt .gauge i.on{background:var(--cat-b)}
-.opt:hover .gauge i.on{box-shadow:0 0 6px var(--cat-b)}
 /* 選んだ答え。押し込まれた状態＝選択、というこのUIの決まりに合わせる。
    :hover より後ろに置き、hover でも沈んだままにしておく */
 .opt.sel,.opt.sel:hover{box-shadow:var(--in);color:var(--cat-b);font-weight:600}
-.opt.sel .gauge{box-shadow:none}
-.opt.sel .gauge i.on{background:var(--cat-b);box-shadow:0 0 7px var(--cat-b)}
 .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
 
 /* ===== 結果 ===== */
@@ -356,16 +346,6 @@ body::before{
 .hexleg span{display:flex;align-items:center;gap:6px}
 .hexleg i{width:9px;height:9px;border-radius:50%;flex:none}
 .fit{display:flex;flex-direction:column;gap:11px;margin-top:18px}
-.fitrow{display:flex;align-items:center;gap:12px}
-.fitrow .fl{font-size:12.5px;letter-spacing:.03em;min-width:82px;color:var(--ink-70)}
-.fitrow .fl em{display:block;font-style:normal;font-size:9.5px;color:var(--ink-45);letter-spacing:.02em}
-.fitrow .fb{flex:1;height:9px;border-radius:99px;box-shadow:var(--in);position:relative;overflow:hidden}
-.fitrow .fb i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--ink-25);
-  transition:width .5s var(--ease)}
-.fitrow .fv{font-size:11.5px;color:var(--ink-45);min-width:26px;text-align:right}
-.fitrow.top .fl{color:var(--cat-b);font-weight:600}
-.fitrow.top .fb i{background:var(--cat-b);box-shadow:0 0 9px var(--cat-b)}
-.fitrow.top .fv{color:var(--cat-b);font-weight:600}
 .fittop{font-size:12.5px;line-height:1.9;color:var(--ink-70);margin-top:18px;
   padding:15px 16px;border-radius:var(--r-sm);box-shadow:var(--in)}
 .note{
