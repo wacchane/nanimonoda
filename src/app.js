@@ -323,8 +323,10 @@ const archName = s => CODE_NAME[codeOf(s)];
 /* 4群 = 開放性(N/S) × 協調性(T/F)。4文字コードの文字色をこれで決める。
    NT=紫 / ST=青 / SF=黄 / NF=緑。色は index.html の --g-* に置いてある */
 const groupOf = s => codeOf(s).slice(1, 3);
-/* 見出しの4文字。群の色で出す */
-const codeTag = s => `<span class="code" data-grp="${groupOf(s)}">${codeOf(s)}</span>`;
+/* 見出しの4文字。色は画面に付けた data-grp から降ってくる */
+const codeTag = s => `<span class="code">${codeOf(s)}</span>`;
+/* 画面ごとに群を宣言する。ここに付けた色を子孫がまとめて継ぐ */
+const paintGroup = (id, s) => $(id).setAttribute('data-grp', groupOf(s));
 /* 見出しの下の一言。段階の言葉 + 辛口の一言 */
 function quipLine(s) {
   const [a, b] = standout(s);
@@ -427,10 +429,10 @@ function radarChart(series) {
 
   const shapes = series.map(sr => {
     const pts = FACTORS.map((f, i) => at(i, sr.s[f.id].ratio).join(',')).join(' ');
-    return `<polygon points="${pts}" fill="${sr.color}" fill-opacity=".18"
-              stroke="${sr.color}" stroke-width="2" stroke-linejoin="round"/>`
+    return `<polygon points="${pts}" fill-opacity=".18" stroke-width="2"
+              stroke-linejoin="round" style="fill:${sr.color};stroke:${sr.color}"/>`
       + FACTORS.map((f, i) => { const [x, y] = at(i, sr.s[f.id].ratio);
-          return `<circle cx="${x}" cy="${y}" r="3.4" fill="${sr.color}"/>`; }).join('');
+          return `<circle cx="${x}" cy="${y}" r="3.4" style="fill:${sr.color}"/>`; }).join('');
   }).join('');
 
   /* 頂点のラベル。因子名の下に10段階の数値を大きく置く。
@@ -446,10 +448,10 @@ function radarChart(series) {
 
   return `<svg class="hex" viewBox="0 0 300 300" role="img" aria-label="5因子のかたち">
     <style>
-      .rd-grid{fill:none;stroke:var(--rd-web);stroke-width:1}
+      .rd-grid{fill:none;stroke:var(--ac-web);stroke-width:1}
       .rd-lab{font-family:var(--sans);font-size:10.5px;font-weight:600;
         fill:var(--ink-70);letter-spacing:.02em}
-      .rd-num{font-size:15px;font-weight:600;fill:var(--rd-num)}
+      .rd-num{font-size:15px;font-weight:600;fill:var(--ac)}
     </style>
     ${grid}${shapes}${labels}
   </svg>`;
@@ -592,6 +594,16 @@ const COL = {
   self: { core: '#C79BFF', near: 'rgba(190,140,255,1)', glow: '#8A4DFF', glowSolid: '#A56BFF' },
   peer: { core: '#FFFFFF', near: 'rgba(255,255,255,.95)', glow: '#FFFFFF' }
 };
+/* 自己評価の点も4群で色を変える。
+   **発光色に配色変数を使わないこと。** ライト配色で濃色になり、光ではなく
+   影として沈む。ここは配色に依存しない固定値で持つ（--ac は文字と線だけ）。 */
+const SELF_COL = {
+  NT: { core: '#C79BFF', near: 'rgba(190,140,255,1)', glow: '#8A4DFF' },
+  ST: { core: '#9ED2FF', near: 'rgba(120,190,255,1)', glow: '#2E8FE8' },
+  SF: { core: '#FFE39A', near: 'rgba(255,206,110,1)', glow: '#E0A317' },
+  NF: { core: '#9CF0CE', near: 'rgba(100,225,175,1)', glow: '#16A96F' }
+};
+const selfCol = s => SELF_COL[groupOf(s)];
 
 /* items: [{ color, s, faint }] — faint は個別の他己評価（点だけ薄く打つ）
    点の脇に名前は出さない。どれがどれかは色と、盤の下の凡例で示す */
@@ -747,8 +759,9 @@ function showResult(kind, idx) {
   $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
   $('r-name').innerHTML = codeTag(s) + esc(archName(s));
   $('r-catch').textContent = quipLine(s);
-  $('r-hex').innerHTML = radarChart([{ color: isPeer ? COL.peer.core : COL.self.glowSolid, s }]);
-  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : COL.self, s }], 'a');
+  paintGroup('s-result', s);
+  $('r-hex').innerHTML = radarChart([{ color: 'var(--ac)', s }]);
+  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : selfCol(s), s }], 'a');
   /* 際立っている順に、因子ごとの読みを並べる */
   $('r-body').innerHTML = standout(s).map(f => `
     <div class="fread">
@@ -796,6 +809,7 @@ function shareResult(s) {
 function showPeerSend() {
   $('p-name').innerHTML = codeTag(pending.s) + esc(archName(pending.s));
   $('p-catch').textContent = 'この人はこう見えました';
+  paintGroup('s-peer', pending.s);
   $('p-map').innerHTML = drawFlat([{ color: COL.peer, s: pending.s }], 'p');
   $('p-link').hidden = true;
   $('p-link').textContent = '';
@@ -831,15 +845,16 @@ function showCompare() {
   const me = d.self.s, agg = aggregate(d.peers);
   const n = d.peers.length;
 
+  paintGroup('s-compare', me);
   $('c-map').innerHTML = drawFlat([
     ...d.peers.map(p => ({ color: COL.peer, s: p.s, faint: true })),
-    { color: COL.self, s: me },
+    { color: selfCol(me), s: me },
     { color: COL.peer, s: agg }
   ], 'c');
 
   $('c-legend').innerHTML = `
     <button class="btn lg" data-open="self">
-      <span class="sw" style="background:${COL.self.core}"></span>
+      <span class="sw" style="background:${selfCol(me).core}"></span>
       <span class="nm">自己評価</span><span class="ty">${shortLabel(me)}</span><span class="go">›</span></button>
     <div class="lg flat">
       <span class="sw" style="background:${COL.peer.core}"></span>
@@ -883,10 +898,10 @@ function gapCard(me, agg, n) {
   return `<div class="card-x">
     <div class="k">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
-    ${radarChart([{ color: COL.self.glowSolid, s: me }, { color: COL.peer.core, s: agg }])}
+    ${radarChart([{ color: 'var(--ac)', s: me }, { color: 'var(--peer-line)', s: agg }])}
     <div class="hexleg">
-      <span><i style="background:${COL.self.core}"></i>自己評価</span>
-      <span><i style="background:${COL.peer.core}"></i>他己評価 総合</span>
+      <span><i style="background:var(--ac)"></i>自己評価</span>
+      <span><i style="background:var(--peer-line)"></i>他己評価 総合</span>
     </div>
     <div class="delta">${FACTORS.map(f => `
       <div><span class="dk">${f.name}</span>

@@ -47,7 +47,9 @@
   --lab:#FFFFFF;    /* 濃い地の上に載る軸ラベル */
   /* 五角形レーダー。色面用の --grid では薄すぎて沈むので専用に持つ */
   --rd-web:rgba(138,77,255,.30); --rd-num:#7A3FE0;
-  /* 4文字コードの文字色。開放性(N/S) × 協調性(T/F) の4群 */
+  --ac:var(--rd-num); --ac-web:var(--rd-web);   /* 群が決まるまでは紫 */
+  --peer-line:#3D4763;   /* 重ねたレーダーの他己評価。白は白地に消える */
+  /* 4群のアクセント。開放性(N/S) × 協調性(T/F) */
   --g-nt:#6D33D6; --g-st:#1F6FD0; --g-sf:#A07405; --g-nf:#0F7E55;
   /* 座標盤の四隅の色。左上=温×陰 / 右上=温×陽 / 左下=冷×陰 / 右下=冷×陽 */
   --c-tl:#C9457E; --c-tr:#F07B2E; --c-bl:#4356BE; --c-br:#23A2B8;
@@ -82,6 +84,7 @@
     --axis:rgba(255,255,255,.44);
     --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
     --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
+    --peer-line:#FFFFFF;
     --wash:.82;
     --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
     --star:1;
@@ -111,11 +114,20 @@
   --axis:rgba(255,255,255,.44);
   --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
   --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
+  --peer-line:#FFFFFF;
   --wash:.82;
   --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
   --star:1;
   --plate:#0D1428;
 }
+
+/* 結果まわりの紫を、4群の色に差し替える。data-grp は画面要素に付ける。
+   カスタムプロパティは子孫に継承されるので、ペンタゴン・数値・帯の言葉・
+   4文字コードがまとめて追従する。**地の色は変えない。** */
+[data-grp="NT"]{--ac:var(--g-nt);--ac-web:color-mix(in srgb,var(--g-nt) 32%,transparent)}
+[data-grp="ST"]{--ac:var(--g-st);--ac-web:color-mix(in srgb,var(--g-st) 32%,transparent)}
+[data-grp="SF"]{--ac:var(--g-sf);--ac-web:color-mix(in srgb,var(--g-sf) 32%,transparent)}
+[data-grp="NF"]{--ac:var(--g-nf);--ac-web:color-mix(in srgb,var(--g-nf) 32%,transparent)}
 
 /* 影の合成 — 個別に box-shadow を手書きせず、必ずここを使う */
 :root{
@@ -309,11 +321,7 @@ body::before{
 .rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
 .rname{font-size:clamp(24px,7vw,30px);line-height:1.35;letter-spacing:.05em;font-weight:600}
 .rname .code{display:block;font-size:13px;letter-spacing:.28em;margin-bottom:6px;
-  color:var(--gc,var(--rd-num))}
-.code[data-grp="NT"]{--gc:var(--g-nt)}
-.code[data-grp="ST"]{--gc:var(--g-st)}
-.code[data-grp="SF"]{--gc:var(--g-sf)}
-.code[data-grp="NF"]{--gc:var(--g-nf)}
+  color:var(--ac)}
 .rcatch{font-size:13px;color:var(--ink-70);margin-top:10px;letter-spacing:.02em}
 
 /* 座標盤は面にはめ込んだ窪みとして置く */
@@ -336,7 +344,7 @@ body::before{
 .fread{padding:15px 17px;border-radius:var(--r-sm);box-shadow:var(--out-sm)}
 .fread .fh{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
 .fread .fh b{font-size:13px;font-weight:600;letter-spacing:.03em}
-.fread .fh span{font-size:12px;color:var(--cat-b);font-weight:600}
+.fread .fh span{font-size:12px;color:var(--ac);font-weight:600}
 .fread .fh i{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--ink-25)}
 .fread p{font-size:13px;line-height:1.9;color:var(--ink-70)}
 
@@ -404,7 +412,7 @@ body::before{
 .delta>div{display:flex;align-items:baseline;gap:10px}
 .dk{font-size:10px;letter-spacing:.1em;color:var(--ink-45)}
 .dv{font-size:11.5px;color:var(--ink-70);margin-left:auto;white-space:nowrap;letter-spacing:.03em}
-.dv b{color:var(--cat-b);margin-left:5px;font-weight:600}
+.dv b{color:var(--ac);margin-left:5px;font-weight:600}
 .sub-note{font-size:11px;color:var(--ink-45);line-height:1.85;margin-top:16px}
 
 .toast{
