@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>何者だ — ビッグファイブ性格診断</title>
-<meta name="description" content="ビッグファイブ（外向性・協調性・誠実性・情緒安定性・開放性）を35問の二択で測ります。自己評価と他己評価のずれも見られます。">
+<title>何者か — ビッグファイブ性格診断</title>
+<meta name="description" content="35問、すべて2択。答えると、あなたの形が5角形で出る。人を診断して送れば、自分の見立てとのズレも見える。">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="何者だ">
+<meta name="apple-mobile-web-app-title" content="何者か">
 <style>
 /* ===========================================================
    配色トークン
@@ -279,10 +279,10 @@ body::before{
 .opt::after{content:"";position:absolute;inset:2px;border-radius:20px;
   background:var(--bg);z-index:-1}
 @keyframes optspin{to{rotate:360deg}}
-.opt .ab{flex:none;width:26px;height:26px;border-radius:50%;font-size:11px;
-  display:flex;align-items:center;justify-content:center;color:var(--ink-45);
+.opt .ab{flex:none;width:36px;height:36px;border-radius:50%;font-size:16px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;color:#A56BFF;
   box-shadow:inset -1px -1px 2px var(--hl),inset 1px 1px 3px var(--sd)}
-.opt.sel .ab{color:var(--cat-b);font-weight:600;box-shadow:var(--out-sm)}
+.opt.sel .ab{color:#C79BFF;box-shadow:var(--out-sm)}
 .opt .ot{min-width:0}
 .opt,.opt:hover,.opt:active{box-shadow:none;transform:none}
 .opt.sel::after{background:color-mix(in srgb,var(--cat-b) 12%,var(--bg))}
@@ -432,13 +432,8 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
   <!-- 表紙 -->
   <section id="s-home" class="screen on">
-    <h1>何者だ<span class="sub">ビッグファイブ性格診断</span></h1>
-    <div class="dial">
-      <div class="d-sun"><b>外向</b>人と関わる</div>
-      <div class="d-warm"><b>協調</b>人に合わせる</div>
-      <div class="d-firm"><b>誠実</b>きっちり運ぶ</div>
-    </div>
-    <p class="lede">ビッグファイブ（外向性・協調性・誠実性・情緒安定性・開放性）を35問の二択で測ります。<br>5角形のグラフと、因子ごとの読みが出ます。他人を診断して結果を送れば、受け取った相手は自己評価と他己評価のずれを見られます。</p>
+    <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
+    <p class="lede">35問、すべて2択。答えると、<b>あなたの形が5角形で出る。</b><br>人を診断して送ることもできる。送られた側は、自分の見立てとのズレが見える。</p>
 
     <p class="eyebrow">診断する</p>
     <div class="cats" id="menu"></div>
@@ -448,7 +443,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
       <div class="cats" id="inboxlist"></div>
     </div>
 
-    <button class="btn" id="btn-compare">まず自分を診断してください</button>
+    <button class="btn" id="btn-compare">まず自分を診断する</button>
     <button class="ghost" id="btn-reset">記録をすべて消す</button>
   </section>
 
@@ -495,14 +490,14 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <p class="rlabel" style="margin-top:26px">あなたのニックネーム</p>
     <input class="field" id="p-nick" type="text" maxlength="20" placeholder="れい"
            autocomplete="off" autocapitalize="off" enterkeyhint="done">
-    <p class="hint">相手には「このニックネームから見たあなた」として届きます。</p>
+    <p class="hint">相手には「このニックネームから見たあなた」として届く。</p>
     <div class="linkbox" id="p-link" hidden></div>
     <div class="acts">
       <button class="btn primary" id="btn-psend">リンクを作ってシェアする</button>
       <button class="btn" id="btn-pcopy">リンクをコピーする</button>
       <button class="btn" id="btn-phome">表紙にもどる</button>
     </div>
-    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られません。リンクの中に入って相手にだけ届きます。</p>
+    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られない。リンクの中に入って、相手にだけ届く。</p>
   </section>
 
   <!-- 受け取った他己評価 -->
