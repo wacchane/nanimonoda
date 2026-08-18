@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>何者か — ビッグファイブ性格診断</title>
-<meta name="description" content="35問、すべて2択。答えると、あなたの形が5角形で出る。人を診断して送れば、自分の見立てとのズレも見える。">
+<meta name="description" content="ビッグファイブを35問すべて2択で測ります。結果は5角形と4文字のタイプ名で出ます。人を診断して送れば、自分の見立てとのズレも見られます。">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -303,7 +303,8 @@ body::before{
 
 /* ===== 結果 ===== */
 .rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
-.rname{font-size:clamp(27px,8vw,34px);line-height:1.3;letter-spacing:.06em;font-weight:600}
+.rname{font-size:clamp(24px,7vw,30px);line-height:1.35;letter-spacing:.05em;font-weight:600}
+.rname .code{display:block;font-size:13px;letter-spacing:.28em;color:#A56BFF;margin-bottom:6px}
 .rcatch{font-size:13px;color:var(--ink-70);margin-top:10px;letter-spacing:.02em}
 
 /* 座標盤は面にはめ込んだ窪みとして置く */
@@ -433,7 +434,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
   <!-- 表紙 -->
   <section id="s-home" class="screen on">
     <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
-    <p class="lede">35問、すべて2択。答えると、<b>あなたの形が5角形で出る。</b><br>人を診断して送ることもできる。送られた側は、自分の見立てとのズレが見える。</p>
+    <p class="lede"><b>ビッグファイブ</b>（外向性・協調性・誠実性・情緒安定性・開放性）を、35問すべて2択で測ります。結果は5角形と、4文字のタイプ名で出ます。<br>人を診断して送ることもできます。送られた側は、自分の見立てとのズレを見られます。</p>
 
     <p class="eyebrow">診断する</p>
     <div class="cats" id="menu"></div>
@@ -490,14 +491,14 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <p class="rlabel" style="margin-top:26px">あなたのニックネーム</p>
     <input class="field" id="p-nick" type="text" maxlength="20" placeholder="れい"
            autocomplete="off" autocapitalize="off" enterkeyhint="done">
-    <p class="hint">相手には「このニックネームから見たあなた」として届く。</p>
+    <p class="hint">相手には「このニックネームから見たあなた」として届きます。</p>
     <div class="linkbox" id="p-link" hidden></div>
     <div class="acts">
       <button class="btn primary" id="btn-psend">リンクを作ってシェアする</button>
       <button class="btn" id="btn-pcopy">リンクをコピーする</button>
       <button class="btn" id="btn-phome">表紙にもどる</button>
     </div>
-    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られない。リンクの中に入って、相手にだけ届く。</p>
+    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られません。リンクの中に入って、相手にだけ届きます。</p>
   </section>
 
   <!-- 受け取った他己評価 -->
