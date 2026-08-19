@@ -355,8 +355,8 @@ const shortLabel = s => `${codeOf(s)}${subOf(s) + 1} ${CODE_NAME[codeOf(s)]}`;
 const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
-const PEER_MAX = 8;   // 届いた他己評価。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
-const SELF_MAX = 5;   // 自己診断の履歴
+const PEER_MAX = 30;  // 届いた他己評価
+const SELF_MAX = 3;   // 自己診断の履歴
 /* 他人への診断の上限。
    **容量ではなく一覧の読みやすさで決めている。** 1件は回答35問を35文字に
    しただけなので実測80バイト前後、30件でも3KB。localStorage の 5MB には
@@ -397,7 +397,8 @@ const store = (() => {
   const shape = o => ({
     selfs: arr(o, 'selfs', SELF_MAX),
     made:  arr(o, 'made',  MADE_MAX),
-    peers: arr(o, 'peers', PEER_MAX)
+    peers: arr(o, 'peers', PEER_MAX),
+    seenLp: !!(o && o.seenLp)      // LPは初回だけ出す
   });
 
   /* v4 からの引き継ぎ。自己評価1件と他己評価はそのまま履歴の1件目にする */
@@ -679,36 +680,30 @@ function toast(msg) {
 function renderHome() {
   const d = store.load();
   const newest = list => list.slice().sort((x, y) => (y.at || 0) - (x.at || 0));
+  const doneSelf = d.selfs.filter(isDone);
 
-  /* 3つの入口。件数を添える */
   $('n-self').textContent = d.selfs.length ? `${d.selfs.length}件` : 'はじめて';
   $('n-made').textContent = d.made.length ? `${d.made.length}件` : 'はじめて';
-  const usable = d.peers.length;
-  $('n-peer').textContent = usable ? `${usable}件` : 'まだ0件';
-  $('go-mirror').classList.toggle('off', !usable);
+  $('n-peer').textContent = d.peers.length ? `${d.peers.length}件` : 'まだ0件';
+  $('go-mirror').classList.toggle('off', !d.peers.length && !doneSelf.length);
 
-  /* 一覧。途中の記録は続きから開く */
-  const rows = (list, label) => newest(list).map(r => {
-    const done = isDone(r);
-    return `<button class="btn card done" data-open="${label}:${idOf(r)}">
-      <span class="dot ${label === 'self' ? '' : 'c'}"></span>
-      <span class="nm">${label === 'self' ? stamp(r.at) : esc(r.nick)}</span>
-      <span class="meta">${done ? shortLabel(scoreOf(r)) : `途中 ${answered(r)}/${QS.length}`}</span>
-    </button>`;
-  }).join('');
+  /* 自己診断の履歴は比較ページで扱う。ここは最新を開くボタンだけ */
+  const see = $('btn-see');
+  see.hidden = !doneSelf.length;
+  see.onclick = () => showResult(newest(doneSelf)[0]);
 
-  const group = (id, listId, cntId, list, label, max) => {
-    $(id).hidden = !list.length;
-    if (!list.length) return;
-    $(cntId).textContent = `${list.length} / ${max}`;
-    $(listId).innerHTML = rows(list, label);
-  };
-  group('g-self', 'selflist', 'self-count', d.selfs, 'self', SELF_MAX);
-  group('g-made', 'madelist', 'made-count', d.made,  'made', MADE_MAX);
-  group('g-peer', 'peerlist', 'peer-count', d.peers, 'peer', PEER_MAX);
-
-  document.querySelectorAll('#s-home [data-open]').forEach(b =>
-    b.onclick = () => openRecord(...b.dataset.open.split(':')));
+  $('g-made').hidden = !d.made.length;
+  if (d.made.length) {
+    $('made-count').textContent = `${d.made.length} / ${MADE_MAX}`;
+    $('madelist').innerHTML = newest(d.made).map(r => `
+      <button class="btn card done" data-open="made:${idOf(r)}">
+        <span class="dot c"></span>
+        <span class="nm">${esc(r.nick)}</span>
+        <span class="meta">${isDone(r) ? shortLabel(scoreOf(r)) : `途中 ${answered(r)}/${QS.length}`}</span>
+      </button>`).join('');
+    document.querySelectorAll('#s-home [data-open]').forEach(b =>
+      b.onclick = () => openRecord(...b.dataset.open.split(':')));
+  }
 }
 
 /* 一覧から1件開く。終わっていれば結果へ、途中なら続きから */
@@ -847,10 +842,7 @@ function showResult(rec, fromPeer) {
     $('btn-share').onclick = () => shareResult(s);
     $('btn-again').onclick = beginSelf;
   }
-  const bf = $('btn-front');
-  bf.hidden = !store.load().peers.length;
-  bf.textContent = '他人から見た自分と比べる';
-  bf.onclick = showCompare;
+  $('btn-front').onclick = showCompare;
   $('btn-other').onclick = goHome;
   show('s-result');
   paintGroup('s-result', s);
@@ -926,6 +918,8 @@ function showInbox(rec) {
    **いきなり平均にしないこと。** 平均は個別を潰すので、まず並べて見せて、
    まとめるかどうかは見る人が決める。 */
 let cmp = { selfId: null, off: {}, avg: 0 };
+let ask = null;    // 消してよいか確認中の行
+let edit = null;   // 名前を変更中の行
 
 function showCompare() {
   const d = store.load();
@@ -963,18 +957,39 @@ function renderCompare() {
   const me = meRec ? scoreOf(meRec) : null;
   const used = d.peers.filter(p => !cmp.off[idOf(p)]);
 
-  const row = (on, key, nm, ty) => `<button class="btn pk ${on ? 'on' : ''}" data-pick="${key}">
-      <span class="mk"></span><span class="pn">${nm}</span><span class="pt">${ty}</span></button>`;
+  /* 1行 = 選ぶボタン + 名前を変える + 消す。
+     **消す前に必ず一度たずねること。** 元に戻せない */
+  const row = (on, key, nm, ty, canRename) => {
+    const id = key.split(':')[1];
+    if (edit && edit.key === key) return `
+      <div class="pkedit">
+        <input class="field" id="ed-in" type="text" maxlength="20" value="${esc(nm)}">
+        <button class="btn ico" data-save="${key}">保存</button>
+        <button class="btn ico" data-cancel="1">やめる</button>
+      </div>`;
+    if (ask === key) return `
+      <div class="pkask">「${esc(nm)}」を消しますか
+        <b data-del="${key}">消す</b><span data-cancel="1">やめる</span></div>`;
+    return `<div class="pkrow">
+      <button class="btn pk ${on ? 'on' : ''}" data-pick="${key}">
+        <span class="mk"></span><span class="pn">${esc(nm)}</span><span class="pt">${ty}</span></button>
+      ${canRename ? `<button class="ico" data-edit="${key}" aria-label="名前を変える">✎</button>` : ''}
+      <button class="ico" data-ask="${key}" aria-label="消す">✕</button>
+    </div>`;
+  };
 
+  $('c-selfcount').textContent = `${done.length} / ${SELF_MAX}`;
   $('c-selfpick').innerHTML =
     done.map(r => row(String(idOf(r)) === String(cmp.selfId), 'self:' + idOf(r),
-                      stamp(r.at), shortLabel(scoreOf(r)))).join('')
-    + row(cmp.selfId === 'none', 'self:none', '出さない', '他己評価だけで見る');
+                      stamp(r.at), shortLabel(scoreOf(r)), false)).join('')
+    + `<div class="pkrow"><button class="btn pk ${cmp.selfId === 'none' ? 'on' : ''}" data-pick="self:none">
+         <span class="mk"></span><span class="pn">出さない</span>
+         <span class="pt">他己評価だけで見る</span></button></div>`;
 
   $('c-peercount').textContent = `${used.length} / ${d.peers.length}`;
   $('c-peerpick').innerHTML = d.peers.length
     ? d.peers.map(p => row(!cmp.off[idOf(p)], 'peer:' + idOf(p),
-                           esc(p.nick), shortLabel(scoreOf(p)))).join('')
+                           p.nick, shortLabel(scoreOf(p)), true)).join('')
     : '<p class="hint">まだ届いていません。</p>';
 
   document.querySelectorAll('#s-compare [data-pick]').forEach(b =>
@@ -982,8 +997,33 @@ function renderCompare() {
       const [kind, key] = b.dataset.pick.split(':');
       if (kind === 'self') cmp.selfId = key;
       else cmp.off[key] = !cmp.off[key];
+      ask = edit = null;
       renderCompare();
     });
+  const on = (sel, fn) => document.querySelectorAll('#s-compare ' + sel).forEach(b => b.onclick = () => fn(b));
+  on('[data-edit]', b => { edit = { key: b.dataset.edit }; ask = null; renderCompare();
+                           const i = $('ed-in'); if (i) { i.focus(); i.select(); } });
+  on('[data-ask]',  b => { ask = b.dataset.ask; edit = null; renderCompare(); });
+  on('[data-cancel]', () => { ask = edit = null; renderCompare(); });
+  on('[data-save]', b => {
+    const nick = ($('ed-in').value || '').trim().slice(0, NICK_MAX);
+    if (!nick) return toast('名前を入れてください');
+    const id = b.dataset.save.split(':')[1];
+    const dd = store.load();
+    const p = dd.peers.find(x => String(idOf(x)) === String(id));
+    if (p) { p.nick = nick; store.save(dd); }
+    edit = null; renderCompare(); renderHome();
+  });
+  on('[data-del]', b => {
+    const [kind, id] = b.dataset.del.split(':');
+    const dd = store.load();
+    const list = kind === 'self' ? dd.selfs : dd.peers;
+    const i = list.findIndex(x => String(idOf(x)) === String(id));
+    if (i >= 0) { list.splice(i, 1); store.save(dd); }
+    ask = null;
+    if (kind === 'self' && String(cmp.selfId) === String(id)) cmp.selfId = null;
+    showCompare(); renderHome(); toast('消しました');
+  });
   document.querySelectorAll('#c-avg [data-avg]').forEach(b => {
     b.classList.toggle('on', +b.dataset.avg === cmp.avg);
     b.onclick = () => { cmp.avg = +b.dataset.avg; renderCompare(); };
@@ -1079,7 +1119,13 @@ function gapBody(me, agg, n) {
 /* ===== イベント ===== */
 const goHome = () => { cancelAdvance(); renderHome(); show('s-home'); };
 
-$('btn-enter').onclick = goHome;
+$('btn-enter').onclick = () => {
+  const d = store.load(); d.seenLp = true; store.save(d);   // LPは初回だけ
+  goHome();
+};
+$('btn-lp').onclick = () => show('s-intro');
+$('btn-rback').onclick = goHome;
+$('btn-cback').onclick = goHome;
 $('btn-back').onclick = () => { if (!advTimer && cur && cur.i > 0) { cur.i--; renderQ(); } };
 $('btn-quit').onclick = goHome;      // 途中でも保存済みなので、そのまま抜けてよい
 $('btn-chome').onclick = goHome;
@@ -1102,8 +1148,18 @@ const startPeer = () => {
 $('btn-nstart').onclick = startPeer;
 $('n-nick').onkeydown = e => { if (e.key === 'Enter') startPeer(); };
 
+/* 全消去は取り返しがつかない。**一度で消さないこと。** 2回押させる */
+let armed = false;
 $('btn-reset').onclick = () => {
-  store.save({ selfs: [], made: [], peers: [] });
+  if (!armed) {
+    armed = true;
+    $('btn-reset').textContent = 'もう一度押すと、すべて消えます';
+    setTimeout(() => { armed = false; $('btn-reset').textContent = '記録をすべて消す'; }, 4000);
+    return;
+  }
+  armed = false;
+  $('btn-reset').textContent = '記録をすべて消す';
+  store.save({ selfs: [], made: [], peers: [], seenLp: true });
   cur = null; renderHome(); toast('記録を消しました');
 };
 
@@ -1150,7 +1206,7 @@ function boot() {
     return;
   }
   renderHome();
-  show('s-intro');   // 入口から入る
+  show(store.load().seenLp ? 's-home' : 's-intro');   // LPは初回だけ
 }
 boot();
 

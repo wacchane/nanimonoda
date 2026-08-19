@@ -285,6 +285,30 @@ body::before{
 .pk .pt{font-size:11px;color:var(--ink-70);margin-left:auto;text-align:right;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* 画面の左上に置く戻り。タップ対象は44pxを割らない */
+.back{position:absolute;left:-6px;top:calc(18px + env(safe-area-inset-top));
+  width:44px;height:44px;border:0;background:none;color:var(--ink-45);
+  font-size:30px;line-height:1;cursor:pointer;padding:0;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.back:active{color:var(--ink)}
+#s-result,#s-compare{position:relative;padding-top:calc(62px + env(safe-area-inset-top))}
+.ghost.tiny{font-size:10.5px;color:var(--ink-25);margin-top:44px}
+
+/* 履歴の1行。選ぶ・名前を変える・消す */
+.pkrow{display:flex;align-items:center;gap:7px}
+.pkrow .pk{flex:1;min-width:0}
+/* タップ対象は44pxを割らない（CLAUDE.md のモバイル方針） */
+.ico{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:none;
+  color:var(--ink-25);font-size:13px;cursor:pointer;padding:0;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ico:active{color:var(--ink-70)}
+.pkedit{display:flex;gap:7px;align-items:center}
+.pkedit .field{margin:0}
+.pkask{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;
+  border-radius:var(--r-sm);box-shadow:var(--in)}
+.pkask b{font-weight:600;color:var(--cat-c);cursor:pointer;padding:6px 10px}
+.pkask span{margin-left:auto;color:var(--ink-45);cursor:pointer;padding:6px 10px}
+
 /* まとめ方の3択。押した先＝窪み、というこのUIの決まりに合わせる */
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .sg{min-height:44px;padding:11px 6px;text-align:center;font-size:11.5px;letter-spacing:.02em}
@@ -440,9 +464,8 @@ body::before{
       <button class="btn tri-b" id="go-mirror"><b>他人から<br>見た自分</b><span class="tn" id="n-peer"></span></button>
     </div>
 
-    <div class="group" id="g-self" hidden>
-      <p class="eyebrow">自己診断の履歴 <span id="self-count" class="cnt"></span></p>
-      <div class="cats" id="selflist"></div>
+    <div class="acts" style="margin-top:26px">
+      <button class="btn primary" id="btn-see" hidden>診断結果を見る</button>
     </div>
 
     <div class="group" id="g-made" hidden>
@@ -450,12 +473,8 @@ body::before{
       <div class="cats" id="madelist"></div>
     </div>
 
-    <div class="group" id="g-peer" hidden>
-      <p class="eyebrow">届いた他己評価 <span id="peer-count" class="cnt"></span></p>
-      <div class="cats" id="peerlist"></div>
-    </div>
-
-    <button class="ghost" id="btn-reset">記録をすべて消す</button>
+    <button class="ghost" id="btn-lp">陰陽冷温とは</button>
+    <button class="ghost tiny" id="btn-reset">記録をすべて消す</button>
   </section>
 
   <!-- 設問 -->
@@ -489,6 +508,7 @@ body::before{
 
   <!-- 結果 -->
   <section id="s-result" class="screen">
+    <button class="back" id="btn-rback" aria-label="トップページにもどる">‹</button>
     <p class="rlabel" id="r-cat"></p>
     <h2 class="rname" id="r-name"></h2>
     <p class="rcatch" id="r-catch"></p>
@@ -499,10 +519,10 @@ body::before{
     <div class="rbody" id="r-body"></div>
     <p class="note" id="r-note"></p>
     <div class="acts">
-      <button class="btn primary" id="btn-front" hidden>自己評価と他己評価を比べる</button>
-      <button class="btn" id="btn-share">結果をシェアする</button>
-      <button class="btn" id="btn-other">表紙にもどる</button>
-      <button class="btn" id="btn-again">もう一度やり直す</button>
+      <button class="btn primary" id="btn-front">比較する</button>
+      <button class="btn" id="btn-other">トップページ</button>
+      <button class="btn" id="btn-again">診断をやり直す</button>
+      <button class="ghost" id="btn-share">結果をシェアする</button>
     </div>
   </section>
 
@@ -547,13 +567,10 @@ body::before{
 
   <!-- 比較 -->
   <section id="s-compare" class="screen">
-    <p class="eyebrow">他人から見た自分</p>
-    <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">自分と、まわりから見た自分</h2>
+    <button class="back" id="btn-cback" aria-label="トップページにもどる">‹</button>
+    <p class="rlabel">比較</p>
+    <h2 class="rname" style="font-size:clamp(24px,7vw,29px)">自分と、まわりから見た自分</h2>
 
-    <p class="eyebrow" style="margin-top:28px">比べる自己診断</p>
-    <div class="pick" id="c-selfpick"></div>
-    <p class="eyebrow" style="margin-top:26px">出す他己評価 <span id="c-peercount" class="cnt"></span></p>
-    <div class="pick" id="c-peerpick"></div>
     <p class="eyebrow" style="margin-top:26px">まとめ方</p>
     <div class="seg" id="c-avg">
       <button class="btn sg" data-avg="0">まとめない</button>
@@ -562,8 +579,14 @@ body::before{
     </div>
 
     <div id="c-out"></div>
+
+    <p class="eyebrow" style="margin-top:34px">自己診断 <span id="c-selfcount" class="cnt"></span></p>
+    <div class="pick" id="c-selfpick"></div>
+    <p class="eyebrow" style="margin-top:26px">届いた他己評価 <span id="c-peercount" class="cnt"></span></p>
+    <div class="pick" id="c-peerpick"></div>
+
     <div class="acts">
-      <button class="btn primary" id="btn-chome">表紙にもどる</button>
+      <button class="btn primary" id="btn-chome">トップページ</button>
     </div>
   </section>
 
