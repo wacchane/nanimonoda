@@ -563,7 +563,6 @@ body::before{
     <div class="mapwrap"><div id="p-map"></div></div>
     <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
     <div id="p-body"></div>
-    <p class="note" id="p-note"></p>
     <p class="rlabel" style="margin-top:26px">あなたのニックネーム</p>
     <input class="field" id="p-nick" type="text" maxlength="20" placeholder="れい"
            autocomplete="off" autocapitalize="off" enterkeyhint="done">
@@ -575,6 +574,7 @@ body::before{
       <button class="btn" id="btn-phome">表紙にもどる</button>
     </div>
     <p class="note">サーバーには送られません。結果はリンクの中に入って、相手にだけ届きます。診断した相手の記録は、この端末の中にだけ残ります。</p>
+    <p class="note foot" id="p-note"></p>
   </section>
 
   <!-- 受け取った他己評価 -->
@@ -615,6 +615,7 @@ body::before{
     <div class="acts">
       <button class="btn primary" id="btn-chome">トップページ</button>
     </div>
+    <p class="note foot" id="c-note"></p>
   </section>
 
 <div class="toast" id="toast"></div>

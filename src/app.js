@@ -1093,6 +1093,7 @@ function renderCompare() {
   const scr = document.getElementById('s-compare');
   if (!me && !used.length) {
     $('c-out').innerHTML = '<p class="hint" style="margin-top:26px">自己診断か他己評価を、1つ以上選んでください。</p>';
+    $('c-note').textContent = '';
     scr.removeAttribute('data-grp');
     return;
   }
@@ -1141,8 +1142,8 @@ function renderCompare() {
   $('c-out').innerHTML = `
     <div class="mapwrap" style="margin-top:26px"><div id="c-map"></div></div>
     <p class="mapcap">${items.length > 1 ? '陽陰 × 温冷。紫が自己評価、白が他己評価' : '陽陰 × 温冷'}</p>
-    ${body}
-    <p class="note">${PEER_NOTE}</p>`;
+    ${body}`;
+  $('c-note').textContent = PEER_NOTE;
   $('c-map').innerHTML = drawFlat(dots, 'c');
   paintGroup('s-compare', head);
 }
