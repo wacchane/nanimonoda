@@ -278,6 +278,7 @@ body::before{
 .opt.sel,.opt.sel:hover{box-shadow:var(--in);color:var(--cat-b);font-weight:600}
 .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
 
+
 /* 入口（LP）。**ここだけ明朝。** 本編の角ゴとは混ぜない。
    漢字は色を付けず白で通す。威厳を出したいので、面も影も置かず字だけを立てる。 */
 #s-intro{font-family:var(--mincho);font-weight:400}
@@ -304,9 +305,9 @@ body::before{
 /* **真円をふたつ重ねないこと。** 光輪に見えて霧にならない。
    縦長と横長を、中心をずらして重ねる */
 /* **色は白より濃く置くこと。** 同じ不透明度だと、暗い地に負けて灰色に見える */
-.lp-k::before{inset:-52% -38%;
+.lp-k::before{inset:-44% -30%;
   background:radial-gradient(ellipse at 42% 46%,rgba(var(--fog),.42),transparent 64%)}
-.lp-k::after{inset:-34% -56%;
+.lp-k::after{inset:-28% -46%;
   background:radial-gradient(ellipse at 58% 56%,rgba(var(--fog),.32),transparent 66%)}
 /* 霧だけ色を持つ。**字は白のまま。** 字に色を付けた版は一度作って廃止している */
 [data-k="in"] {--fog:169,140,255}   /* 陰 — 紫 */
@@ -315,19 +316,18 @@ body::before{
 [data-k="on"] {--fog:255,110,102}   /* 温 — 赤 */
 .lp-k.fog::before{animation:fogA 2.8s var(--ease) forwards}
 .lp-k.fog::after {animation:fogB 3.4s var(--ease) forwards}
-/* **右へ流す。** 説明文のほうへ抜けていくと、字と文がつながって見える。
-   消えきるのは文にかかる前。薄いままでも重なると小さい文字が読みにくい */
+/* **大きく動かさないこと。** 横に流すと画面の外にはみ出して、
+   ページの幅ごと広がる。その場でふくらんで消えるだけにする。
+   ふたつの向きと速さを変えてあるので、動きは止まって見えない */
 @keyframes fogA{
-  0%  {opacity:0;  transform:translate(0,0)      scale(.55)}
-  22% {opacity:.95}
-  55% {opacity:.5;  transform:translate(26%,-5%) scale(1.3)}
-  100%{opacity:0;  transform:translate(62%,-9%)  scale(1.7)}
+  0%  {opacity:0;  transform:translate(0,0)     scale(.55)}
+  25% {opacity:.95}
+  100%{opacity:0;  transform:translate(4%,-3%)  scale(1.45)}
 }
 @keyframes fogB{
-  0%  {opacity:0;  transform:translate(0,0)      scale(.65)}
-  30% {opacity:.72}
-  60% {opacity:.38; transform:translate(34%,4%)  scale(1.45)}
-  100%{opacity:0;  transform:translate(78%,8%)   scale(1.95)}
+  0%  {opacity:0;  transform:translate(0,0)     scale(.65)}
+  35% {opacity:.72}
+  100%{opacity:0;  transform:translate(-3%,3%)  scale(1.6)}
 }
 .lp-row p{flex:1;min-width:0;font-size:clamp(10.5px,3vw,12px);line-height:2.1;
   color:var(--ink-70);margin:0;text-align:left}
