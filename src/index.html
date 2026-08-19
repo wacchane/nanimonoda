@@ -304,16 +304,12 @@ body::before{
 }
 /* **真円をふたつ重ねないこと。** 光輪に見えて霧にならない。
    縦長と横長を、中心をずらして重ねる */
-/* **色は白より濃く置くこと。** 同じ不透明度だと、暗い地に負けて灰色に見える */
-.lp-k::before{inset:-44% -30%;
-  background:radial-gradient(ellipse at 42% 46%,rgba(var(--fog),.42),transparent 64%)}
-.lp-k::after{inset:-28% -46%;
-  background:radial-gradient(ellipse at 58% 56%,rgba(var(--fog),.32),transparent 66%)}
-/* 霧だけ色を持つ。**字は白のまま。** 字に色を付けた版は一度作って廃止している */
-[data-k="in"] {--fog:169,140,255}   /* 陰 — 紫 */
-[data-k="yo"] {--fog:242,178, 74}   /* 陽 — 黄 */
-[data-k="rei"]{--fog: 95,176,245}   /* 冷 — 青 */
-[data-k="on"] {--fog:255,110,102}   /* 温 — 赤 */
+/* **霧は白。** 4色に塗り分けた版は作ったが、白のほうが静かで威厳に合う。
+   色を戻すなら行に --fog を持たせて rgba(var(--fog),…) にする */
+.lp-k::before{inset:-52% -38%;
+  background:radial-gradient(ellipse at 42% 46%,rgba(255,255,255,.27),transparent 64%)}
+.lp-k::after{inset:-34% -56%;
+  background:radial-gradient(ellipse at 58% 56%,rgba(255,255,255,.22),transparent 66%)}
 .lp-k.fog::before{animation:fogA 2.8s var(--ease) forwards}
 .lp-k.fog::after {animation:fogB 3.4s var(--ease) forwards}
 /* **大きく動かさないこと。** 横に流すと画面の外にはみ出して、
@@ -529,13 +525,13 @@ body::before{
   <section id="s-intro" class="screen on">
     <h1>何者か</h1>
     <div class="lp">
-      <div class="lp-row" data-k="in"><b class="lp-k">陰</b>
+      <div class="lp-row"><b class="lp-k">陰</b>
         <p><em>内に置く</em>灯りを内側に持つ人です。考えは深いところで組み上がり、言葉になるのは最後です。静かな場所で、いちばん遠くまで見えます。</p></div>
-      <div class="lp-row" data-k="yo"><b class="lp-k">陽</b>
+      <div class="lp-row"><b class="lp-k">陽</b>
         <p><em>外に出す</em>熱を外へ放つ人です。思いつきがそのまま声になり、その声に人が集まります。動いている場所で、いちばん速く走れます。</p></div>
-      <div class="lp-row" data-k="rei"><b class="lp-k">冷</b>
+      <div class="lp-row"><b class="lp-k">冷</b>
         <p><em>筋で決める</em>物事を筋で見る人です。好き嫌いより先に、正しいかどうかを置きます。迷いが短く、決めたあとがぶれません。</p></div>
-      <div class="lp-row" data-k="on"><b class="lp-k">温</b>
+      <div class="lp-row"><b class="lp-k">温</b>
         <p><em>情で決める</em>物事を人で見る人です。正しさより先に、相手の顔を思い浮かべます。手が届く範囲を、確実にあたためます。</p></div>
     </div>
     <p class="lp-foot">35問、すべて2択。3〜4分。</p>
