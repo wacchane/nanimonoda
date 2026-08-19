@@ -430,34 +430,6 @@ const store = (() => {
   };
 })();
 
-/* ===== 配色（自動 / ライト / ダーク） ===== *//* ===== 配色（自動 / ライト / ダーク） ===== */
-const THEMES = [
-  { id: 'auto',  icon: '◐', label: '配色: 自動' },
-  { id: 'light', icon: '○', label: '配色: ライト' },
-  { id: 'dark',  icon: '●', label: '配色: ダーク' }
-];
-const theme = (() => {
-  const KEY = 'nanimonoda.theme';
-  let cur = 'auto';
-  try { cur = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
-  const apply = () => {
-    const t = THEMES.find(x => x.id === cur) || THEMES[0];
-    if (cur === 'auto') delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = cur;
-    const btn = document.getElementById('btn-theme');
-    if (btn) { btn.textContent = t.icon; btn.setAttribute('aria-label', t.label); }
-    return t;
-  };
-  return {
-    init: apply,
-    next() {
-      cur = THEMES[(THEMES.findIndex(x => x.id === cur) + 1) % THEMES.length].id;
-      try { localStorage.setItem(KEY, cur); } catch (e) {}
-      return apply();
-    }
-  };
-})();
-
 /* ===== 採点 =====
    高い側（hi）を選んだ数を因子ごとに数える。1因子7問なので 0〜7。
    奇数なので中央 3.5 に到達できず、**中央値が構造的に出ない。**
@@ -949,26 +921,47 @@ function showInbox(rec) {
 }
 
 /* ===== 比較（自己評価 vs 他己評価の総合） ===== */
-/* 何を使って比べるか。自己診断は1件、他己評価は何件でも */
-let cmp = { selfId: null, off: {} };
+/* 何を出して、どこで平均を取るか。
+   avg: 0 まとめない / 1 他己をまとめる / 2 すべてまとめる
+   **いきなり平均にしないこと。** 平均は個別を潰すので、まず並べて見せて、
+   まとめるかどうかは見る人が決める。 */
+let cmp = { selfId: null, off: {}, avg: 0 };
 
 function showCompare() {
   const d = store.load();
   const done = d.selfs.filter(isDone);
-  if (cmp.selfId === null || !done.some(r => String(idOf(r)) === String(cmp.selfId)))
-    cmp.selfId = done.length ? idOf(done[done.length - 1]) : 'none';
+  if (cmp.selfId === null || (cmp.selfId !== 'none' && !done.some(r => String(idOf(r)) === String(cmp.selfId))))
+    cmp.selfId = done.length ? String(idOf(done[done.length - 1])) : 'none';
   renderCompare();
   show('s-compare');
 }
+
+/* 1件ぶんの見出し。名前・タイプ・辛口の一言 */
+const hexCell = (s, label) => `
+  <div class="hexcell" data-grp="${groupOf(s)}">
+    <div class="hn">${esc(label)}</div>
+    <div class="ht">${codeOf(s)}${subOf(s) + 1}　${esc(archName(s))}</div>
+    ${radarChart([{ color: 'var(--ac)', s }])}
+    <p class="hq">${quipLine(s)}</p>
+  </div>`;
+
+/* 1件だけのときは、結果画面と同じ密度で読みまで出す */
+const soloView = (s, label) => `
+  <div class="card-x" data-grp="${groupOf(s)}">
+    <div class="k">${esc(label)}</div>
+    <div class="v">${codeOf(s)}${subOf(s) + 1}　${esc(archName(s))}</div>
+    <div class="d">${quipLine(s)}</div>
+    ${radarChart([{ color: 'var(--ac)', s }])}
+  </div>
+  <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
+  <div>${readCards(s)}</div>`;
 
 function renderCompare() {
   const d = store.load();
   const done = d.selfs.filter(isDone).slice().sort((x, y) => (y.at || 0) - (x.at || 0));
   const meRec = done.find(r => String(idOf(r)) === String(cmp.selfId));
   const me = meRec ? scoreOf(meRec) : null;
-
   const used = d.peers.filter(p => !cmp.off[idOf(p)]);
-  const agg = used.length ? aggregate(used.map(p => ({ s: scoreOf(p) }))) : null;
 
   const row = (on, key, nm, ty) => `<button class="btn pk ${on ? 'on' : ''}" data-pick="${key}">
       <span class="mk"></span><span class="pn">${nm}</span><span class="pt">${ty}</span></button>`;
@@ -976,7 +969,7 @@ function renderCompare() {
   $('c-selfpick').innerHTML =
     done.map(r => row(String(idOf(r)) === String(cmp.selfId), 'self:' + idOf(r),
                       stamp(r.at), shortLabel(scoreOf(r)))).join('')
-    + row(cmp.selfId === 'none', 'self:none', '使わない', '他己評価だけで見る');
+    + row(cmp.selfId === 'none', 'self:none', '出さない', '他己評価だけで見る');
 
   $('c-peercount').textContent = `${used.length} / ${d.peers.length}`;
   $('c-peerpick').innerHTML = d.peers.length
@@ -991,42 +984,65 @@ function renderCompare() {
       else cmp.off[key] = !cmp.off[key];
       renderCompare();
     });
+  document.querySelectorAll('#c-avg [data-avg]').forEach(b => {
+    b.classList.toggle('on', +b.dataset.avg === cmp.avg);
+    b.onclick = () => { cmp.avg = +b.dataset.avg; renderCompare(); };
+  });
 
-  /* 選んだ組み合わせに応じて、盤とグラフと言葉を作り直す */
-  if (!me && !agg) {
-    $('c-out').innerHTML = '<p class="hint" style="margin-top:26px">自己診断か他己評価を、どちらか1つ以上選んでください。</p>';
-    document.getElementById('s-compare').removeAttribute('data-grp');
+  /* 出すものを、まとめ方に応じて組み立てる */
+  const scr = document.getElementById('s-compare');
+  if (!me && !used.length) {
+    $('c-out').innerHTML = '<p class="hint" style="margin-top:26px">自己診断か他己評価を、1つ以上選んでください。</p>';
+    scr.removeAttribute('data-grp');
     return;
   }
-  const head = me || agg;
-  const dots = [
-    ...used.map(p => ({ color: COL.peer, s: scoreOf(p), faint: true })),
-    ...(me ? [{ color: selfCol(me), s: me }] : []),
-    ...(agg ? [{ color: COL.peer, s: agg }] : [])
-  ];
-  const series = [
-    ...(me ? [{ color: 'var(--ac)', s: me }] : []),
-    ...(agg ? [{ color: 'var(--peer-line)', s: agg }] : [])
-  ];
+
+  let items;   // 画面に出す線。{ s, label, self }
+  if (cmp.avg === 2) {
+    const all = [...(me ? [{ s: me }] : []), ...used.map(p => ({ s: scoreOf(p) }))];
+    items = [{ s: aggregate(all), label: `${all.length}件の平均${me ? '（自己評価をふくむ）' : ''}` }];
+  } else if (cmp.avg === 1) {
+    items = [
+      ...(me ? [{ s: me, label: `自己評価　${stamp(meRec.at)}`, self: true }] : []),
+      ...(used.length ? [{ s: aggregate(used.map(p => ({ s: scoreOf(p) }))),
+                           label: `他己評価 ${used.length}件の平均` }] : [])
+    ];
+  } else {
+    items = [
+      ...(me ? [{ s: me, label: `自己評価　${stamp(meRec.at)}`, self: true }] : []),
+      ...used.map(p => ({ s: scoreOf(p), label: `${p.nick}から見たあなた` }))
+    ];
+  }
+
+  const head = items[0].s;
+  const dots = items.map(it => ({ color: it.self ? selfCol(it.s) : COL.peer, s: it.s }));
+
+  let body;
+  if (items.length === 1) {
+    body = soloView(items[0].s, items[0].label);
+  } else if (cmp.avg === 1 && me && used.length) {
+    /* 自己1本と他己の平均1本。この形のときだけズレが出せる */
+    const agg = items[1].s;
+    body = `<div class="card-x">
+        ${radarChart([{ color: 'var(--ac)', s: me }, { color: 'var(--peer-line)', s: agg }])}
+        <div class="hexleg">
+          <span><i style="background:var(--ac)"></i>自己評価</span>
+          <span><i style="background:var(--peer-line)"></i>他己評価 ${used.length}件の平均</span>
+        </div>
+        ${gapBody(me, agg, used.length)}
+      </div>
+      <p class="eyebrow" style="margin-top:30px">因子ごとの読み（自己評価）</p>
+      <div>${readCards(me)}</div>`;
+  } else {
+    body = `<div class="hexgrid">${items.map(it => hexCell(it.s, it.label)).join('')}</div>
+      <p class="hint" style="margin-top:16px">まとめ方を変えると、平均をとった1つの読みが出ます。</p>`;
+  }
 
   $('c-out').innerHTML = `
     <div class="mapwrap" style="margin-top:26px"><div id="c-map"></div></div>
-    <p class="mapcap">${used.length > 1 ? '薄い点は個別の他己評価' : '&nbsp;'}</p>
-    <div class="card-x">
-      ${radarChart(series)}
-      <div class="hexleg">
-        ${me ? '<span><i style="background:var(--ac)"></i>自己評価</span>' : ''}
-        ${agg ? `<span><i style="background:var(--peer-line)"></i>他己評価 ${used.length}件の平均</span>` : ''}
-      </div>
-      ${me && agg ? gapBody(me, agg, used.length)
-                  : `<p class="sub-note">${me
-                      ? '他己評価を1件以上選ぶと、外からの見え方とのズレが出ます。'
-                      : `他己評価${used.length}件の平均です。自己診断を選ぶと、自分の見立てとのズレも見られます。`}</p>`}
-    </div>
-    <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
-    <div>${readCards(head)}</div>
+    <p class="mapcap">${items.length > 1 ? '陽陰 × 温冷。紫が自己評価、白が他己評価' : '陽陰 × 温冷'}</p>
+    ${body}
     <p class="note">${PEER_NOTE}</p>`;
-
   $('c-map').innerHTML = drawFlat(dots, 'c');
   paintGroup('s-compare', head);
 }
@@ -1070,7 +1086,6 @@ $('btn-chome').onclick = goHome;
 $('btn-phome').onclick = goHome;
 $('btn-ihome').onclick = goHome;
 $('btn-nhome').onclick = goHome;
-$('btn-theme').onclick = () => toast(theme.next().label);
 
 $('go-self').onclick = beginSelf;
 $('go-peer').onclick = () => { $('n-nick').value = ''; show('s-nick'); $('n-nick').focus(); };
@@ -1114,7 +1129,6 @@ $('btn-pcopy').onclick = () => {
 };
 
 /* ===== 起動 ===== */
-theme.init();
 
 function boot() {
   const got = readLink(location.hash);

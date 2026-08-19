@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>何者か — ビッグファイブ性格診断</title>
 <meta name="description" content="ビッグファイブを35問すべて2択で測ります。結果は5角形と64種のタイプ名で出ます。人を診断して送れば、自分の見立てとのズレも見られます。">
-<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0D1428">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -15,83 +14,16 @@
 <meta name="apple-mobile-web-app-title" content="何者か">
 <style>
 /* ===========================================================
-   配色トークン
-   ライト = 白背景 / ダーク = ミッドナイトブルー背景
+   配色トークン — ミッドナイトブルー1本
+
+   **ライト配色は廃止した。** 切り替えも持たない。影の淡さで面を作る
+   表現はもともと暗い地のほうが素直に出るうえ、光として置いた色が
+   白地では濃色になって影に見える、という事故がライト側だけで起き続けた。
+
    影は必ず「明るい側が左上・暗い側が右下」。ここが崩れると
    面の浮き沈みが読めなくなる。
    =========================================================== */
 :root{
-  --bg:#FFFFFF;
-  --ink:#12172B;
-  --ink-70:rgba(18,23,43,.68);
-  --ink-45:rgba(18,23,43,.44);
-  --ink-25:rgba(18,23,43,.24);
-
-  --hl:#FFFFFF;
-  --sd:rgba(148,161,190,.36);
-  --sd-soft:rgba(148,161,190,.26);
-
-  /* 4軸の色 */
-  --sun:#C8801A;    /* 陽 */
-  --shade:#5A63B8;  /* 陰 */
-  --warm:#D24A42;   /* 温 */
-  --cold:#2A7FD4;   /* 冷 */
-  /* 診断の色 */
-  --cat-a:#218A80;  /* 一般向け */
-  --cat-b:#6A4FD8;  /* ディライト版 */
-  --cat-c:#C43D77;  /* 他己評価 */
-
-  --grid:rgba(255,255,255,.38);
-  --axis:rgba(255,255,255,.60);
-  --wash:.92;       /* 座標盤の地の濃さ */
-  --lab:#FFFFFF;    /* 濃い地の上に載る軸ラベル */
-  /* 五角形レーダー。色面用の --grid では薄すぎて沈むので専用に持つ */
-  --rd-web:rgba(138,77,255,.30); --rd-num:#7A3FE0;
-  --ac:var(--rd-num); --ac-web:var(--rd-web);   /* 群が決まるまでは紫 */
-  --peer-line:#3D4763;   /* 重ねたレーダーの他己評価。白は白地に消える */
-  /* 4群のアクセント。開放性(N/S) × 協調性(T/F) */
-  --g-nt:#6D33D6; --g-st:#1F6FD0; --g-sf:#A07405; --g-nf:#0F7E55;
-  /* 座標盤の四隅の色。左上=温×陰 / 右上=温×陽 / 左下=冷×陰 / 右下=冷×陽 */
-  --c-tl:#C9457E; --c-tr:#F07B2E; --c-bl:#4356BE; --c-br:#23A2B8;
-  --star:0;         /* 星は暗いときだけ出す */
-  --plate:#FFFFFF;
-
-  --r:20px; --r-sm:14px;
-  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
-  --ease:cubic-bezier(.22,.61,.36,1);
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0D1428;
-    --ink:#E6ECF8;
-    --ink-70:rgba(230,236,248,.66);
-    --ink-45:rgba(230,236,248,.42);
-    --ink-25:rgba(230,236,248,.22);
-
-    --hl:rgba(76,99,158,.30);
-    --sd:rgba(2,5,14,.78);
-    --sd-soft:rgba(2,5,14,.55);
-
-    --sun:#F2B24A;
-    --shade:#98A1EE;
-    --warm:#FF7E73;
-    --cold:#5FB0F5;
-    --cat-a:#4ED6C4;
-    --cat-b:#A48CFF;
-    --cat-c:#FF8FC4;
-
-    --grid:rgba(255,255,255,.26);
-    --axis:rgba(255,255,255,.44);
-    --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
-    --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
-    --peer-line:#FFFFFF;
-    --wash:.82;
-    --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
-    --star:1;
-    --plate:#0D1428;
-  }
-}
-:root[data-theme="dark"]{
   --bg:#0D1428;
   --ink:#E6ECF8;
   --ink-70:rgba(230,236,248,.66);
@@ -102,27 +34,36 @@
   --sd:rgba(2,5,14,.78);
   --sd-soft:rgba(2,5,14,.55);
 
-  --sun:#F2B24A;
-  --shade:#98A1EE;
-  --warm:#FF7E73;
-  --cold:#5FB0F5;
+  /* 4つの軸の色。入口ページの漢字にもこれを使う */
+  --sun:#F2B24A;    /* 陽 */
+  --shade:#98A1EE;  /* 陰 */
+  --warm:#FF7E73;   /* 温 */
+  --cold:#5FB0F5;   /* 冷 */
+  /* 診断の色 */
   --cat-a:#4ED6C4;
   --cat-b:#A48CFF;
   --cat-c:#FF8FC4;
 
   --grid:rgba(255,255,255,.26);
   --axis:rgba(255,255,255,.44);
+  --wash:.82;       /* 座標盤の地の濃さ */
+  --lab:#FFFFFF;
+  /* 五角形レーダー。色面用の --grid では薄すぎて沈むので専用に持つ */
   --rd-web:rgba(196,155,255,.34); --rd-num:#C79BFF;
+  --ac:var(--rd-num); --ac-web:var(--rd-web);   /* 群が決まるまでは紫 */
+  --peer-line:#FFFFFF;   /* 重ねたレーダーの他己評価 */
+  /* 4群のアクセント。開放性(N/S) × 協調性(T/F) */
   --g-nt:#C79BFF; --g-st:#6FB6F8; --g-sf:#E8C25A; --g-nf:#57D3A0;
-  --peer-line:#FFFFFF;
-  --wash:.82;
+  /* 座標盤の四隅。左上=温×陰 / 右上=温×陽 / 左下=冷×陰 / 右下=冷×陽 */
   --c-tl:#A32E63; --c-tr:#C25F17; --c-bl:#2E3C9B; --c-br:#147E92;
   --star:1;
-  --plate:#0D1428;
-}
 
-/* 結果まわりの紫を、4群の色に差し替える。data-grp は画面要素に付ける。
-   カスタムプロパティは子孫に継承されるので、ペンタゴン・数値・帯の言葉・
+  --r:20px; --r-sm:14px;
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+/* 結果まわりのアクセントを4群で差し替える。data-grp は画面要素に付ける。
+   カスタムプロパティは子孫に継承されるので、五角形・数値・帯の言葉・
    4文字コードがまとめて追従する。**地の色は変えない。** */
 [data-grp="NT"]{--ac:var(--g-nt);--ac-web:color-mix(in srgb,var(--g-nt) 32%,transparent)}
 [data-grp="ST"]{--ac:var(--g-st);--ac-web:color-mix(in srgb,var(--g-st) 32%,transparent)}
@@ -217,17 +158,6 @@ body::before{
 .ghost:focus-visible{outline:2px solid var(--cat-b);outline-offset:3px}
 
 /* 配色トグル */
-.tt{
-  position:fixed;z-index:20;
-  top:calc(14px + env(safe-area-inset-top));right:14px;
-  width:44px;height:44px;border:0;border-radius:50%;
-  background:var(--bg);color:var(--ink-45);font-size:15px;line-height:1;
-  cursor:pointer;box-shadow:var(--out-sm);
-  transition:box-shadow .24s var(--ease),color .24s;
-}
-.tt:hover{color:var(--ink-70);box-shadow:var(--out)}
-.tt:active{box-shadow:var(--in)}
-.tt:focus-visible{outline:2px solid var(--cat-b);outline-offset:3px}
 
 /* ===== 表紙 ===== */
 #s-home h1,#s-intro h1{
@@ -319,12 +249,20 @@ body::before{
 .lp{margin-top:34px}
 .lp-row{display:flex;align-items:center;gap:18px;margin-bottom:26px}
 .lp-row.rev{flex-direction:row-reverse}
+/* **漢字はそれぞれの軸の色で置く。** 座標盤の四隅と同じ割り当てにして、
+   結果を見たときに同じ色が同じ意味で戻ってくるようにする */
 .lp-k{flex:none;width:76px;height:76px;border-radius:24px;box-shadow:var(--out);
   display:flex;align-items:center;justify-content:center;
-  font-size:38px;font-weight:600;letter-spacing:0;color:var(--ink)}
+  font-size:38px;font-weight:600;letter-spacing:0;color:var(--kc);
+  text-shadow:0 0 22px color-mix(in srgb,var(--kc) 45%,transparent)}
+[data-k="in"]{--kc:var(--shade)}
+[data-k="yo"]{--kc:var(--sun)}
+[data-k="rei"]{--kc:var(--cold)}
+[data-k="on"]{--kc:var(--warm)}
 .lp-row p{font-size:12.5px;line-height:2;color:var(--ink-70);margin:0}
 .lp-row.rev p{text-align:right}
-.lp-row em{font-style:normal;font-weight:600;color:var(--ink);display:block;margin-bottom:3px}
+.lp-row em{font-style:normal;font-weight:600;color:var(--kc);display:block;margin-bottom:5px;
+  font-size:11px;letter-spacing:.14em}
 .lp-foot{font-size:12.5px;line-height:2;color:var(--ink-45);text-align:center;margin:34px 0 4px}
 
 /* 表紙の3つ。320px でも3列を保つので、文字を小さくして折り返す */
@@ -346,6 +284,18 @@ body::before{
   text-overflow:ellipsis;max-width:46%}
 .pk .pt{font-size:11px;color:var(--ink-70);margin-left:auto;text-align:right;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* まとめ方の3択。押した先＝窪み、というこのUIの決まりに合わせる */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.sg{min-height:44px;padding:11px 6px;text-align:center;font-size:11.5px;letter-spacing:.02em}
+.sg.on{box-shadow:var(--in);color:var(--ac);font-weight:600}
+
+/* 個別に並べる五角形。**1列を割らないこと。** 頂点の因子名と数値が読めなくなる */
+.hexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:16px}
+.hexcell{padding:14px 12px 6px;border-radius:var(--r);box-shadow:var(--out-sm)}
+.hexcell .hn{font-size:11px;letter-spacing:.1em;color:var(--ac);font-weight:600}
+.hexcell .ht{font-size:14px;font-weight:600;letter-spacing:.03em;margin-top:3px}
+.hexcell .hq{font-size:11.5px;line-height:1.9;color:var(--ink-70);margin-top:6px}
 
 /* ===== 結果 ===== */
 .rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
@@ -459,31 +409,24 @@ body::before{
   .card-x{padding:17px}
 }
 </style>
-<script>
-/* 初回描画前に配色を確定させる（一瞬白く光るのを防ぐ） */
-try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('wasser.theme');
-      if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
-</script>
 </head>
 <body>
-<button class="tt" id="btn-theme" aria-label="配色を切り替える">◐</button>
 <div id="app">
 
-  <!-- 表紙 -->
   <!-- 入口。陰陽冷温が何を指しているかだけ置く -->
   <section id="s-intro" class="screen on">
-    <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
+    <h1>何者か</h1>
     <div class="lp">
-      <div class="lp-row"><b class="lp-k">陰</b>
-        <p><em>影として立つ人。</em>前に出ないのは、引いているからではありません。一歩さがった場所からのほうが、場の全体はよく見えます。声の大きさと、支えている量は比例しません。</p></div>
-      <div class="lp-row rev"><b class="lp-k">陽</b>
-        <p><em>最初に口を開く人。</em>沈黙を破るのはいつも誰かの一言です。その一言があるから輪ができて、輪ができるから場が始まります。明るさは、責任の引き受け方のひとつです。</p></div>
-      <div class="lp-row"><b class="lp-k">冷</b>
-        <p><em>事実から目をそらさない人。</em>優しさより先に、正しさを差し出します。冷たいのではありません。相手を、正しさに耐えられる人だと見ているだけです。</p></div>
-      <div class="lp-row rev"><b class="lp-k">温</b>
-        <p><em>相手の側に立ってから話す人。</em>角を丸めるのは弱さではなく、続けるための技術です。守られた関係の多くは、誰かが黙って飲み込んだ言葉の上にあります。</p></div>
+      <div class="lp-row" data-k="in"><b class="lp-k">陰</b>
+        <p><em>内に置く</em>灯りを内側に持つ人です。考えは深いところで組み上がり、言葉になるのは最後です。静かな場所で、いちばん遠くまで見えます。</p></div>
+      <div class="lp-row rev" data-k="yo"><b class="lp-k">陽</b>
+        <p><em>外に出す</em>熱を外へ放つ人です。思いつきがそのまま声になり、その声に人が集まります。動いている場所で、いちばん速く走れます。</p></div>
+      <div class="lp-row" data-k="rei"><b class="lp-k">冷</b>
+        <p><em>筋で決める</em>物事を筋で見る人です。好き嫌いより先に、正しいかどうかを置きます。迷いが短く、決めたあとがぶれません。</p></div>
+      <div class="lp-row rev" data-k="on"><b class="lp-k">温</b>
+        <p><em>情で決める</em>物事を人で見る人です。正しさより先に、相手の顔を思い浮かべます。手が届く範囲を、確実にあたためます。</p></div>
     </div>
-    <p class="lp-foot">どれが良いということはありません。<br>あなたがどこに立っているかを、35問で測ります。</p>
+    <p class="lp-foot">35問、すべて2択。3〜4分。</p>
     <div class="acts"><button class="btn primary" id="btn-enter">はじめる</button></div>
   </section>
 
@@ -609,8 +552,14 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
     <p class="eyebrow" style="margin-top:28px">比べる自己診断</p>
     <div class="pick" id="c-selfpick"></div>
-    <p class="eyebrow" style="margin-top:26px">使う他己評価 <span id="c-peercount" class="cnt"></span></p>
+    <p class="eyebrow" style="margin-top:26px">出す他己評価 <span id="c-peercount" class="cnt"></span></p>
     <div class="pick" id="c-peerpick"></div>
+    <p class="eyebrow" style="margin-top:26px">まとめ方</p>
+    <div class="seg" id="c-avg">
+      <button class="btn sg" data-avg="0">まとめない</button>
+      <button class="btn sg" data-avg="1">他己をまとめる</button>
+      <button class="btn sg" data-avg="2">すべてまとめる</button>
+    </div>
 
     <div id="c-out"></div>
     <div class="acts">
