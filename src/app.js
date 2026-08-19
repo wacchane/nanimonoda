@@ -1,12 +1,5 @@
 /* ===== 何者か — ディライトの役職適性診断（3軸18問） ===== */
 
-/* 診断の種類。qk は QS.t のどの言い回しを使うか */
-const MODES = [
-  { id: 'self', kind: 'self', qk: 'self',  name: '自分を診断する',  hint: '35問 / 3〜4分' },
-  { id: 'peer', kind: 'peer', qk: 'other', name: '他人を診断する',  hint: '結果をリンクで相手に送れます' }
-];
-const modeOf = id => MODES.find(m => m.id === id);
-
 /* ===== ビッグファイブ 35問 =====
    5因子 × 7問。すべて二択（強制選択）。
 
@@ -362,29 +355,72 @@ const shortLabel = s => `${codeOf(s)}${subOf(s) + 1} ${CODE_NAME[codeOf(s)]}`;
 const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
-const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
-/* 自分が診断した相手の保存上限。
-   **容量ではなく一覧の読みやすさで決めている。** 1件は回答35ビットを
-   35文字にしただけなので実測100バイト前後、30件でも3KB。localStorage の
-   5MB にはまるで届かない。増やすなら表紙の一覧を畳む作りが先に要る。 */
+const PEER_MAX = 8;   // 届いた他己評価。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
+const SELF_MAX = 5;   // 自己診断の履歴
+/* 他人への診断の上限。
+   **容量ではなく一覧の読みやすさで決めている。** 1件は回答35問を35文字に
+   しただけなので実測80バイト前後、30件でも3KB。localStorage の 5MB には
+   まるで届かない。増やすなら表紙の一覧を畳む作りが先に要る。 */
 const MADE_MAX = 30;
 
-/* ===== 保存 =====
-   形: { self: {s,at} | null, peers: [ {nick,s,at} ] }
-   設問構成が変わるたびにキーを上げる。v2（堅緩軸）とは非互換なので読まない */
+/* 回答は1問1文字。'.' は未回答。
+   **点数を保存しないこと。** 採点式を直したとき、保存済みの点数だけが
+   古い式のまま残って、新しく取った結果と比べられなくなる。 */
+const BLANK = '.'.repeat(QS.length);
+const packAns = ans => QS.map((_, i) => (ans[i] === 0 || ans[i] === 1) ? String(ans[i]) : '.').join('');
+const unpackAns = str => {
+  const o = {};
+  for (let i = 0; i < QS.length; i++) if (str[i] === '0' || str[i] === '1') o[i] = +str[i];
+  return o;
+};
+const answered = r => (r.a || '').split('').filter(c => c !== '.').length;
+/* 旧版は点数だけを持っていた。回答が無い記録はその点数をそのまま使う */
+const isDone = r => r.a ? answered(r) === QS.length : !!r.s;
+const scoreOf = r => r.a ? score(unpackAns(r.a)) : r.s;
+const idOf = r => r.id || r.at;
+const nextQ = r => { const i = (r.a || '').indexOf('.'); return i < 0 ? 0 : i; };
+
+const stamp = t => {
+  const d = new Date(t);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 const store = (() => {
-  const KEY = 'nanimonoda.v4';
+  const KEY = 'nanimonoda.v5';
+  const OLD = 'nanimonoda.v4';
   let mem = null;
   let ok = false;
   try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); ok = true; } catch (e) { ok = false; }
+
+  const arr = (o, k, max) => (o && Array.isArray(o[k])) ? o[k].slice(-max) : [];
   const shape = o => ({
-    self: (o && o.self) || null,
-    peers: (o && Array.isArray(o.peers)) ? o.peers.slice(-PEER_MAX) : [],
-    made: (o && Array.isArray(o.made)) ? o.made.slice(-MADE_MAX) : []
+    selfs: arr(o, 'selfs', SELF_MAX),
+    made:  arr(o, 'made',  MADE_MAX),
+    peers: arr(o, 'peers', PEER_MAX)
   });
+
+  /* v4 からの引き継ぎ。自己評価1件と他己評価はそのまま履歴の1件目にする */
+  const migrate = () => {
+    let old = null;
+    try { old = JSON.parse(localStorage.getItem(OLD) || 'null'); } catch (e) {}
+    if (!old) return null;
+    return {
+      selfs: old.self ? [{ id: old.self.at, at: old.self.at, s: old.self.s }] : [],
+      made:  Array.isArray(old.made) ? old.made.map(m => ({ id: m.at, ...m })) : [],
+      peers: Array.isArray(old.peers) ? old.peers.map(p => ({ id: p.at, ...p })) : []
+    };
+  };
+
   return {
     load() {
-      try { return shape(JSON.parse((ok ? localStorage.getItem(KEY) : mem) || '{}')); }
+      let raw = null;
+      try { raw = ok ? localStorage.getItem(KEY) : mem; } catch (e) {}
+      if (!raw) {
+        const m = migrate();
+        if (m) { this.save(m); return shape(m); }
+      }
+      try { return shape(JSON.parse(raw || '{}')); }
       catch (e) { return shape(null); }
     },
     save(o) {
@@ -394,17 +430,7 @@ const store = (() => {
   };
 })();
 
-/* 診断した相手は「回答そのもの」を1問1文字で持つ。
-   **点数を保存しないこと。** 採点式を直したとき、保存済みの点数だけが
-   古い式のまま残って、新しく診断した相手と比べられなくなる。 */
-const packAns = ans => QS.map((_, i) => (ans[i] ? '1' : '0')).join('');
-const unpackAns = str => {
-  const o = {};
-  for (let i = 0; i < QS.length; i++) o[i] = str[i] === '1' ? 1 : 0;
-  return o;
-};
-
-/* ===== 配色（自動 / ライト / ダーク） ===== */
+/* ===== 配色（自動 / ライト / ダーク） ===== *//* ===== 配色（自動 / ライト / ダーク） ===== */
 const THEMES = [
   { id: 'auto',  icon: '◐', label: '配色: 自動' },
   { id: 'light', icon: '○', label: '配色: ライト' },
@@ -543,7 +569,7 @@ function readLink(hash) {
     if (b.length < PACK_BYTES) return null;
     const answers = unpackAnswers(b.subarray(0, PACK_BYTES));
     const nick = new TextDecoder().decode(b.subarray(PACK_BYTES)).trim().slice(0, NICK_MAX);
-    return { nick: nick || '名前なし', s: score(answers), at: Date.now() };
+    return { id: Date.now(), at: Date.now(), nick: nick || '名前なし', a: packAns(answers) };
   } catch (e) { return null; }
 }
 
@@ -665,8 +691,6 @@ function drawFlat(items, id) {
 /* ===== 画面制御 ===== */
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
-let cur = { mode: null, i: 0, answers: {} };
-let pending = null;   // 他人を診断した直後の結果（まだ送っていない）
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
@@ -682,84 +706,111 @@ function toast(msg) {
 /* ===== 表紙 ===== */
 function renderHome() {
   const d = store.load();
+  const newest = list => list.slice().sort((x, y) => (y.at || 0) - (x.at || 0));
 
-  $('menu').innerHTML = MODES.map((m, i) => {
-    const done = m.kind === 'self' && d.self;
-    return `<button class="btn card ${done ? 'done' : ''}" data-mode="${m.id}">
-      <span class="dot"></span>
-      <span class="no">${String(i + 1).padStart(2, '0')}</span>
-      <span class="nm">${m.name}</span>
-      <span class="meta">${done ? shortLabel(d.self.s) : m.hint}</span>
+  /* 3つの入口。件数を添える */
+  $('n-self').textContent = d.selfs.length ? `${d.selfs.length}件` : 'はじめて';
+  $('n-made').textContent = d.made.length ? `${d.made.length}件` : 'はじめて';
+  const usable = d.peers.length;
+  $('n-peer').textContent = usable ? `${usable}件` : 'まだ0件';
+  $('go-mirror').classList.toggle('off', !usable);
+
+  /* 一覧。途中の記録は続きから開く */
+  const rows = (list, label) => newest(list).map(r => {
+    const done = isDone(r);
+    return `<button class="btn card done" data-open="${label}:${idOf(r)}">
+      <span class="dot ${label === 'self' ? '' : 'c'}"></span>
+      <span class="nm">${label === 'self' ? stamp(r.at) : esc(r.nick)}</span>
+      <span class="meta">${done ? shortLabel(scoreOf(r)) : `途中 ${answered(r)}/${QS.length}`}</span>
     </button>`;
   }).join('');
-  document.querySelectorAll('[data-mode]').forEach(b =>
-    b.onclick = () => {
-      const id = b.dataset.mode;
-      if (id === 'self' && store.load().self) showResult('self');
-      else start(id);
-    });
 
-  const box = $('inbox');
-  box.hidden = !d.peers.length;
-  if (d.peers.length) {
-    $('inbox-count').textContent = `${d.peers.length} / ${PEER_MAX}`;
-    $('inboxlist').innerHTML = d.peers.map((p, i) => `
-      <button class="btn card done" data-peer="${i}">
-        <span class="dot c"></span>
-        <span class="nm">${esc(p.nick)}</span>
-        <span class="meta">${shortLabel(p.s)}</span>
-      </button>`).join('');
-    document.querySelectorAll('[data-peer]').forEach(b =>
-      b.onclick = () => showResult('peer', +b.dataset.peer));
-  }
+  const group = (id, listId, cntId, list, label, max) => {
+    $(id).hidden = !list.length;
+    if (!list.length) return;
+    $(cntId).textContent = `${list.length} / ${max}`;
+    $(listId).innerHTML = rows(list, label);
+  };
+  group('g-self', 'selflist', 'self-count', d.selfs, 'self', SELF_MAX);
+  group('g-made', 'madelist', 'made-count', d.made,  'made', MADE_MAX);
+  group('g-peer', 'peerlist', 'peer-count', d.peers, 'peer', PEER_MAX);
 
-  const mb = $('made');
-  mb.hidden = !d.made.length;
-  if (d.made.length) {
-    $('made-count').textContent = `${d.made.length} / ${MADE_MAX}`;
-    $('madelist').innerHTML = d.made.slice().reverse().map(m => {
-      const s = score(unpackAns(m.a));
-      return `<button class="btn card done" data-made="${esc(m.nick)}">
-        <span class="dot c"></span>
-        <span class="nm">${esc(m.nick)}</span>
-        <span class="meta">${shortLabel(s)}</span>
-      </button>`;
-    }).join('');
-    document.querySelectorAll('[data-made]').forEach(b =>
-      b.onclick = () => showPeerSend(d.made.find(m => m.nick === b.dataset.made)));
-  }
+  document.querySelectorAll('#s-home [data-open]').forEach(b =>
+    b.onclick = () => openRecord(...b.dataset.open.split(':')));
+}
 
-  const ready = d.self && d.peers.length;
-  const cb = $('btn-compare');
-  cb.disabled = !ready;
-  cb.classList.toggle('off', !ready);
-  cb.classList.toggle('primary', !!ready);
-  cb.textContent = ready
-    ? `自己評価と他己評価を比べる（${d.peers.length}件）`
-    : (d.self ? '他己評価が届くと比べられます' : 'まず自分を診断してください');
+/* 一覧から1件開く。終わっていれば結果へ、途中なら続きから */
+function openRecord(kind, id) {
+  const d = store.load();
+  const list = kind === 'self' ? d.selfs : kind === 'made' ? d.made : d.peers;
+  const r = list.find(x => String(idOf(x)) === String(id));
+  if (!r) return;
+  if (!isDone(r)) return resume(kind, r);
+  if (kind === 'self') return showResult(r);
+  if (kind === 'made') return showPeerSend(r);
+  return showInbox(r);
 }
 
 /* ===== 設問 ===== */
-const ADVANCE_MS = 260;
+/* 選んでから次の設問に移るまで。**長くしないこと。** 35問あるので、
+   ここが伸びるとそのぶん全部に効いて、反応が鈍いという印象になる。
+   選んだことが見える最低限（1フレーム＋α）に留める */
+const ADVANCE_MS = 90;
 let advTimer = null;
 function cancelAdvance() { clearTimeout(advTimer); advTimer = null; }
 
-function start(mode) {
+/* いま解いている記録。kind は self / made、id で保存先を引く */
+let cur = null;
+
+function beginSelf() {
+  const d = store.load();
+  const r = { id: Date.now(), at: Date.now(), a: BLANK };
+  d.selfs.push(r);
+  if (d.selfs.length > SELF_MAX) d.selfs = d.selfs.slice(-SELF_MAX);
+  store.save(d);
+  resume('self', r);
+}
+
+/* 相手の名前を先に決める。**ここで記録を作ること。**
+   保存が最後だと、途中でやめた回答がまるごと消える */
+function beginPeer(nick) {
+  const d = store.load();
+  const now = Date.now();
+  const i = d.made.findIndex(m => m.nick === nick);
+  const r = { id: i >= 0 ? idOf(d.made[i]) : now, at: now, nick, a: BLANK };
+  if (i >= 0) d.made[i] = r; else d.made.push(r);
+  if (d.made.length > MADE_MAX) d.made = d.made.slice(-MADE_MAX);
+  store.save(d);
+  resume('made', r);
+}
+
+function resume(kind, r) {
   cancelAdvance();
-  cur = { mode, i: 0, answers: {} };
+  cur = { kind, id: idOf(r), nick: r.nick, i: nextQ(r), answers: unpackAns(r.a || '') };
   show('s-quiz'); renderQ();
 }
 
+/* 回答を1問ぶん書き戻す。中断はいつ起きるか分からないので毎問やる */
+function persist() {
+  if (!cur) return;
+  const d = store.load();
+  const list = cur.kind === 'self' ? d.selfs : d.made;
+  const r = list.find(x => String(idOf(x)) === String(cur.id));
+  if (!r) return;
+  r.a = packAns(cur.answers);
+  store.save(d);
+}
+
 function renderQ() {
-  const { mode, i, answers } = cur;
-  const m = modeOf(mode);
+  const { kind, i, answers } = cur;
   const q = QS[i];
   const picked = answers[i];
-  $('qmeta').textContent = `${m.name} ${String(i + 1).padStart(2, '0')}/${QS.length}`;
+  const qk = kind === 'self' ? 'self' : 'other';
+  $('qmeta').textContent = `${kind === 'self' ? '自分を診断する' : esc(cur.nick)} ${String(i + 1).padStart(2, '0')}/${QS.length}`;
   $('bar').style.width = ((i + 1) / QS.length * 100) + '%';
   $('qno').textContent = `Q${String(i + 1).padStart(2, '0')}`;
-  $('qtext').textContent = m.kind === 'peer' ? 'この人に近いのはどちら？' : '自分に近いのはどちら？';
-  $('opts').innerHTML = q[m.qk].map((t, v) => `
+  $('qtext').textContent = kind === 'self' ? '自分に近いのはどちら？' : 'この人に近いのはどちら？';
+  $('opts').innerHTML = q[qk].map((t, v) => `
     <button class="btn opt ${v === picked ? 'sel' : ''}" data-v="${v}"
             aria-pressed="${v === picked}">
       <span class="ab">${'AB'[v]}</span><span class="ot">${t}</span>
@@ -769,32 +820,34 @@ function renderQ() {
 }
 
 function answer(v) {
-  if (advTimer) return;               // 移行中の二度押しを弾く
+  cancelAdvance();                    // 送り待ちの間でも押し直せる
   cur.answers[cur.i] = v;
   document.querySelectorAll('#opts .opt').forEach(b => {
     const on = +b.dataset.v === v;
     b.classList.toggle('sel', on);
     b.setAttribute('aria-pressed', on);
   });
+  persist();
   advTimer = setTimeout(() => {
     advTimer = null;
-    if (cur.i < QS.length - 1) { cur.i++; renderQ(); }
+    const left = QS.map((_, i) => i).find(i => cur.answers[i] === undefined);
+    if (left !== undefined) { cur.i = left; renderQ(); }
     else finish();
   }, ADVANCE_MS);
 }
 
 function finish() {
-  if (modeOf(cur.mode).kind === 'peer') {
-    pending = { answers: { ...cur.answers }, s: score(cur.answers) };
-    return showPeerSend();
-  }
   const d = store.load();
-  d.self = { s: score(cur.answers), at: Date.now() };
+  const list = cur.kind === 'self' ? d.selfs : d.made;
+  const r = list.find(x => String(idOf(x)) === String(cur.id));
+  if (!r) return goHome();
+  r.a = packAns(cur.answers);
   store.save(d);
-  showResult('self');
+  cur = null;
+  if (list === d.made) showPeerSend(r); else showResult(r);
 }
 
-/* ===== 表示部品 ===== */
+/* ===== 表示部品 ===== *//* ===== 表示部品 ===== */
 /* 5因子ぶんのバー。数値は素点の分数だけ出す */
 const readout = (s, exact = true) => FACTORS.map(f => `
   <div class="fct">
@@ -805,32 +858,30 @@ const readout = (s, exact = true) => FACTORS.map(f => `
   </div>`).join('');
 
 /* ===== 結果 ===== */
-function showResult(kind, idx) {
-  const d = store.load();
-  const rec = kind === 'peer' ? d.peers[idx] : d.self;
-  if (!rec) { renderHome(); return show('s-home'); }
-  const s = rec.s, isPeer = kind === 'peer';
-
-  $('r-cat').textContent = isPeer ? `${rec.nick}から見たあなた` : 'あなたの結果';
+/* 自分の結果。rec は selfs か peers の1件 */
+function showResult(rec, fromPeer) {
+  const s = scoreOf(rec);
+  $('r-cat').textContent = fromPeer ? `${rec.nick}から見たあなた` : `あなたの結果　${stamp(rec.at)}`;
   $('r-name').innerHTML = codeTag(s) + esc(archName(s));
   $('r-catch').textContent = quipLine(s);
-  paintGroup('s-result', s);
   $('r-hex').innerHTML = radarChart([{ color: 'var(--ac)', s }]);
-  $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : selfCol(s), s }], 'a');
+  $('r-map').innerHTML = drawFlat([{ color: fromPeer ? COL.peer : selfCol(s), s }], 'a');
   $('r-body').innerHTML = readCards(s);
-  $('r-note').textContent = isPeer ? PEER_NOTE : ROLE_NOTE;
+  $('r-note').textContent = fromPeer ? PEER_NOTE : ROLE_NOTE;
 
-  $('btn-share').hidden = isPeer;
-  $('btn-again').hidden = isPeer;
-  if (!isPeer) {
+  $('btn-share').hidden = !!fromPeer;
+  $('btn-again').hidden = !!fromPeer;
+  if (!fromPeer) {
     $('btn-share').onclick = () => shareResult(s);
-    $('btn-again').onclick = () => start('self');
+    $('btn-again').onclick = beginSelf;
   }
   const bf = $('btn-front');
-  bf.hidden = !(d.self && d.peers.length);
+  bf.hidden = !store.load().peers.length;
+  bf.textContent = '他人から見た自分と比べる';
   bf.onclick = showCompare;
   $('btn-other').onclick = goHome;
   show('s-result');
+  paintGroup('s-result', s);
 }
 
 /* ===== 共有 ===== */
@@ -855,95 +906,134 @@ function shareResult(s) {
 }
 
 /* ===== 他人を診断した結果を送る ===== */
-function showPeerSend(saved) {
-  if (saved) pending = { answers: unpackAns(saved.a), s: score(unpackAns(saved.a)) };
-  const s = pending.s;
+let sending = null;   // いま開いている made の記録
+
+function showPeerSend(rec) {
+  sending = rec;
+  const s = scoreOf(rec);
+  $('p-cat').textContent = `${rec.nick}を診断した結果　${stamp(rec.at)}`;
   $('p-name').innerHTML = codeTag(s) + esc(archName(s));
   $('p-catch').textContent = quipLine(s);
-  paintGroup('s-peer', s);
   $('p-hex').innerHTML = radarChart([{ color: 'var(--ac)', s }]);
   $('p-map').innerHTML = drawFlat([{ color: COL.peer, s }], 'p');
   $('p-body').innerHTML = readCards(s);
   $('p-note').textContent = PEER_NOTE;
   $('p-link').hidden = true;
   $('p-link').textContent = '';
-  $('p-nick').value = saved ? saved.nick : '';
+  $('p-nick').value = rec.nick;
   show('s-peer');
+  paintGroup('s-peer', s);
 }
 
-/* 誰を診断したかを端末に残す。同じニックネームは上書きして増やさない */
-function saveMade(nick, answers) {
-  const d = store.load();
-  const rec = { nick, a: packAns(answers), at: Date.now() };
-  const i = d.made.findIndex(m => m.nick === nick);
-  if (i >= 0) d.made[i] = rec; else d.made.push(rec);
-  let full = false;
-  if (d.made.length > MADE_MAX) { d.made = d.made.slice(-MADE_MAX); full = true; }
-  store.save(d);
-  if (full) toast(`診断した相手は${MADE_MAX}件までです。古いものから外しました`);
-}
-
+/* 送るときのニックネームは、送り手（自分）の名乗り */
 function peerLink() {
   const nick = $('p-nick').value.trim();
   if (!nick) { toast('ニックネームを入れてください'); $('p-nick').focus(); return null; }
-  saveMade(nick, pending.answers);
-  return { nick, url: makeLink(nick, pending.answers) };
+  return { nick, url: makeLink(nick, unpackAns(sending.a)) };
 }
 
 /* ===== 受け取り ===== */
-function showInbox(peer, idx) {
-  $('i-title').textContent = `${peer.nick}から見たあなた`;
-  $('i-catch').textContent = quipLine(peer.s);
-  $('i-map').innerHTML = drawFlat([{ color: COL.peer, s: peer.s }], 'i');
-  $('i-readout').innerHTML = readout(peer.s);
+function showInbox(rec) {
+  const s = scoreOf(rec);
+  $('i-title').textContent = `${rec.nick}から見たあなた`;
+  $('i-catch').textContent = quipLine(s);
+  $('i-map').innerHTML = drawFlat([{ color: COL.peer, s }], 'i');
+  $('i-readout').innerHTML = readout(s);
   $('i-note').textContent = PEER_NOTE;
   const d = store.load();
   const bi = $('btn-icompare');
-  if (d.self) { bi.textContent = '自分の結果と並べる'; bi.onclick = showCompare; }
-  else { bi.textContent = 'まず自分を診断する'; bi.onclick = () => start('self'); }
-  $('btn-idetail').onclick = () => showResult('peer', idx);
+  if (d.selfs.length) { bi.textContent = '自分の結果と並べる'; bi.onclick = showCompare; }
+  else { bi.textContent = 'まず自分を診断する'; bi.onclick = beginSelf; }
+  $('btn-idetail').onclick = () => showResult(rec, true);
   show('s-inbox');
 }
 
 /* ===== 比較（自己評価 vs 他己評価の総合） ===== */
+/* 何を使って比べるか。自己診断は1件、他己評価は何件でも */
+let cmp = { selfId: null, off: {} };
+
 function showCompare() {
   const d = store.load();
-  if (!d.self || !d.peers.length) return;
-  const me = d.self.s, agg = aggregate(d.peers);
-  const n = d.peers.length;
+  const done = d.selfs.filter(isDone);
+  if (cmp.selfId === null || !done.some(r => String(idOf(r)) === String(cmp.selfId)))
+    cmp.selfId = done.length ? idOf(done[done.length - 1]) : 'none';
+  renderCompare();
+  show('s-compare');
+}
 
-  paintGroup('s-compare', me);
-  $('c-map').innerHTML = drawFlat([
-    ...d.peers.map(p => ({ color: COL.peer, s: p.s, faint: true })),
-    { color: selfCol(me), s: me },
-    { color: COL.peer, s: agg }
-  ], 'c');
+function renderCompare() {
+  const d = store.load();
+  const done = d.selfs.filter(isDone).slice().sort((x, y) => (y.at || 0) - (x.at || 0));
+  const meRec = done.find(r => String(idOf(r)) === String(cmp.selfId));
+  const me = meRec ? scoreOf(meRec) : null;
 
-  $('c-legend').innerHTML = `
-    <button class="btn lg" data-open="self">
-      <span class="sw" style="background:${selfCol(me).core}"></span>
-      <span class="nm">自己評価</span><span class="ty">${shortLabel(me)}</span><span class="go">›</span></button>
-    <div class="lg flat">
-      <span class="sw" style="background:${COL.peer.core}"></span>
-      <span class="nm">他己評価 総合</span><span class="ty">${shortLabel(agg)}（${n}件の平均）</span></div>
-    ${d.peers.map((p, i) => `
-    <button class="btn lg sub" data-open="peer:${i}">
-      <span class="sw" style="background:${COL.peer.core};opacity:.5"></span>
-      <span class="nm">${esc(p.nick)}</span><span class="ty">${shortLabel(p.s)}</span><span class="go">›</span></button>`).join('')}`;
-  document.querySelectorAll('#c-legend [data-open]').forEach(b =>
+  const used = d.peers.filter(p => !cmp.off[idOf(p)]);
+  const agg = used.length ? aggregate(used.map(p => ({ s: scoreOf(p) }))) : null;
+
+  const row = (on, key, nm, ty) => `<button class="btn pk ${on ? 'on' : ''}" data-pick="${key}">
+      <span class="mk"></span><span class="pn">${nm}</span><span class="pt">${ty}</span></button>`;
+
+  $('c-selfpick').innerHTML =
+    done.map(r => row(String(idOf(r)) === String(cmp.selfId), 'self:' + idOf(r),
+                      stamp(r.at), shortLabel(scoreOf(r)))).join('')
+    + row(cmp.selfId === 'none', 'self:none', '使わない', '他己評価だけで見る');
+
+  $('c-peercount').textContent = `${used.length} / ${d.peers.length}`;
+  $('c-peerpick').innerHTML = d.peers.length
+    ? d.peers.map(p => row(!cmp.off[idOf(p)], 'peer:' + idOf(p),
+                           esc(p.nick), shortLabel(scoreOf(p)))).join('')
+    : '<p class="hint">まだ届いていません。</p>';
+
+  document.querySelectorAll('#s-compare [data-pick]').forEach(b =>
     b.onclick = () => {
-      const [kind, key] = b.dataset.open.split(':');
-      showResult(kind, kind === 'peer' ? +key : undefined);
+      const [kind, key] = b.dataset.pick.split(':');
+      if (kind === 'self') cmp.selfId = key;
+      else cmp.off[key] = !cmp.off[key];
+      renderCompare();
     });
 
-  $('c-readout').innerHTML = readout(agg, false);
-  $('c-cards').innerHTML = gapCard(me, agg, n);
-  show('s-compare');
+  /* 選んだ組み合わせに応じて、盤とグラフと言葉を作り直す */
+  if (!me && !agg) {
+    $('c-out').innerHTML = '<p class="hint" style="margin-top:26px">自己診断か他己評価を、どちらか1つ以上選んでください。</p>';
+    document.getElementById('s-compare').removeAttribute('data-grp');
+    return;
+  }
+  const head = me || agg;
+  const dots = [
+    ...used.map(p => ({ color: COL.peer, s: scoreOf(p), faint: true })),
+    ...(me ? [{ color: selfCol(me), s: me }] : []),
+    ...(agg ? [{ color: COL.peer, s: agg }] : [])
+  ];
+  const series = [
+    ...(me ? [{ color: 'var(--ac)', s: me }] : []),
+    ...(agg ? [{ color: 'var(--peer-line)', s: agg }] : [])
+  ];
+
+  $('c-out').innerHTML = `
+    <div class="mapwrap" style="margin-top:26px"><div id="c-map"></div></div>
+    <p class="mapcap">${used.length > 1 ? '薄い点は個別の他己評価' : '&nbsp;'}</p>
+    <div class="card-x">
+      ${radarChart(series)}
+      <div class="hexleg">
+        ${me ? '<span><i style="background:var(--ac)"></i>自己評価</span>' : ''}
+        ${agg ? `<span><i style="background:var(--peer-line)"></i>他己評価 ${used.length}件の平均</span>` : ''}
+      </div>
+      ${me && agg ? gapBody(me, agg, used.length)
+                  : `<p class="sub-note">${me
+                      ? '他己評価を1件以上選ぶと、外からの見え方とのズレが出ます。'
+                      : `他己評価${used.length}件の平均です。自己診断を選ぶと、自分の見立てとのズレも見られます。`}</p>`}
+    </div>
+    <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
+    <div>${readCards(head)}</div>
+    <p class="note">${PEER_NOTE}</p>`;
+
+  $('c-map').innerHTML = drawFlat(dots, 'c');
+  paintGroup('s-compare', head);
 }
 
 const sign = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v);
 
-function gapCard(me, agg, n) {
+function gapBody(me, agg, n) {
   const dy = Math.round((agg.e.ratio - me.e.ratio) * 100);
   const abs = Math.abs(dy), open = dy >= 0;
   const who = n === 1 ? '相手' : `${n}人の平均`;
@@ -962,33 +1052,44 @@ function gapCard(me, agg, n) {
       ? `${who}から見たあなたは、自分の見立てよりかなり外向きです。周囲の期待と、自分が実際に払っている労力の差が大きくなりやすい形です。`
       : `${who}から見たあなたは、自分の見立てよりかなり内向きです。自分では出しているつもりのものが伝わっていない可能性があります。`;
   }
-  return `<div class="card-x">
-    <div class="k">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
+  return `<div class="k" style="margin-top:18px">自己評価と他己評価の差 — 外向性 ${abs}pt</div>
     <div class="v">${verdict}</div><div class="d">${desc}</div>
-    ${radarChart([{ color: 'var(--ac)', s: me }, { color: 'var(--peer-line)', s: agg }])}
-    <div class="hexleg">
-      <span><i style="background:var(--ac)"></i>自己評価</span>
-      <span><i style="background:var(--peer-line)"></i>他己評価 総合</span>
-    </div>
     <div class="delta">${FACTORS.map(f => `
       <div><span class="dk">${f.name}</span>
         <span class="dv">自己 ${Math.round(me[f.id].ratio * 100)}% → 他己 ${Math.round(agg[f.id].ratio * 100)}%
-          <b>${sign(Math.round((agg[f.id].ratio - me[f.id].ratio) * 100))}</b></span></div>`).join('')}</div>
-    <p class="sub-note">${PEER_NOTE}</p></div>`;
+          <b>${sign(Math.round((agg[f.id].ratio - me[f.id].ratio) * 100))}</b></span></div>`).join('')}</div>`;
 }
 
 /* ===== イベント ===== */
 const goHome = () => { cancelAdvance(); renderHome(); show('s-home'); };
 
-$('btn-back').onclick = () => { if (!advTimer && cur.i > 0) { cur.i--; renderQ(); } };
-$('btn-quit').onclick = goHome;
-$('btn-compare').onclick = showCompare;
+$('btn-enter').onclick = goHome;
+$('btn-back').onclick = () => { if (!advTimer && cur && cur.i > 0) { cur.i--; renderQ(); } };
+$('btn-quit').onclick = goHome;      // 途中でも保存済みなので、そのまま抜けてよい
 $('btn-chome').onclick = goHome;
 $('btn-phome').onclick = goHome;
 $('btn-ihome').onclick = goHome;
+$('btn-nhome').onclick = goHome;
 $('btn-theme').onclick = () => toast(theme.next().label);
+
+$('go-self').onclick = beginSelf;
+$('go-peer').onclick = () => { $('n-nick').value = ''; show('s-nick'); $('n-nick').focus(); };
+$('go-mirror').onclick = () => {
+  if (!store.load().peers.length) return toast('届いた他己評価がまだありません');
+  showCompare();
+};
+
+const startPeer = () => {
+  const nick = $('n-nick').value.trim().slice(0, NICK_MAX);
+  if (!nick) { toast('ニックネームを入れてください'); $('n-nick').focus(); return; }
+  beginPeer(nick);
+};
+$('btn-nstart').onclick = startPeer;
+$('n-nick').onkeydown = e => { if (e.key === 'Enter') startPeer(); };
+
 $('btn-reset').onclick = () => {
-  store.save({ self: null, peers: [], made: [] }); renderHome(); toast('記録を消しました');
+  store.save({ selfs: [], made: [], peers: [] });
+  cur = null; renderHome(); toast('記録を消しました');
 };
 
 $('btn-psend').onclick = async () => {
@@ -1020,22 +1121,22 @@ function boot() {
   if (got) {
     const d = store.load();
     /* 同じ人から同じ内容が二重に入らないようにする */
-    let idx = d.peers.findIndex(p => p.nick === got.nick
-      && FACTORS.every(f => p.s[f.id].sum === got.s[f.id].sum));
-    let full = false;
-    if (idx < 0) {
-      d.peers.push(got);
+    const same = d.peers.find(p => p.nick === got.nick && p.a === got.a);
+    let rec = same, full = false;
+    if (!same) {
+      rec = got;
+      d.peers.push(rec);
       if (d.peers.length > PEER_MAX) { d.peers = d.peers.slice(-PEER_MAX); full = true; }
-      idx = d.peers.length - 1;
       store.save(d);
     }
     history.replaceState(null, '', location.pathname + location.search);
     renderHome();
-    showInbox(got, idx);
+    showInbox(rec);
     if (full) toast(`他己評価は${PEER_MAX}件までです。古いものから外しました`);
     return;
   }
   renderHome();
+  show('s-intro');   // 入口から入る
 }
 boot();
 

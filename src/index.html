@@ -197,6 +197,8 @@ body::before{
   border-radius:var(--r);cursor:pointer;text-align:left;
   box-shadow:var(--out);
   transition:box-shadow .24s var(--ease),transform .24s var(--ease),color .24s;
+  touch-action:manipulation;      /* ダブルタップ拡大の待ち時間を作らせない */
+  -webkit-tap-highlight-color:transparent;
 }
 .btn:hover{box-shadow:var(--out-lg)}
 .btn:active{box-shadow:var(--in);transform:scale(.994)}
@@ -228,14 +230,16 @@ body::before{
 .tt:focus-visible{outline:2px solid var(--cat-b);outline-offset:3px}
 
 /* ===== 表紙 ===== */
-#s-home h1{
+#s-home h1,#s-intro h1{
   font-weight:600;font-size:clamp(32px,10vw,40px);line-height:1.2;
   letter-spacing:.1em;margin:0;padding-right:52px;
 }
-#s-home h1 .sub{
+#s-home h1 .sub,#s-intro h1 .sub{
   display:block;font-size:12px;letter-spacing:.14em;color:var(--ink-45);
   margin-top:14px;font-weight:300;padding-right:0;
 }
+/* 入口は読み物なので中央に置く */
+#s-intro h1{text-align:center;padding-right:0}
 .dial{display:flex;gap:8px;margin:28px 0 6px}
 .dial div{
   flex:1;padding:12px 0 10px;text-align:center;border-radius:var(--r-sm);
@@ -262,7 +266,7 @@ body::before{
 .card.done .dot{background:var(--cat-b);box-shadow:0 0 9px var(--cat-b),var(--out-sm)}
 .card.done .dot.c{background:var(--cat-c);box-shadow:0 0 9px var(--cat-c),var(--out-sm)}
 .card.done .meta{color:var(--ink-70)}
-#btn-compare{margin-top:22px;text-align:center;font-size:12.5px;letter-spacing:.08em}
+#btn-reset{margin-top:22px}
 #btn-reset{display:block;margin:16px auto 0}
 
 /* ===== 設問 ===== */
@@ -299,6 +303,10 @@ body::before{
   box-shadow:inset -1px -1px 2px var(--hl),inset 1px 1px 3px var(--sd)}
 .opt.sel .ab{color:#C79BFF;box-shadow:var(--out-sm)}
 .opt .ot{min-width:0}
+/* **二択の見た目の切り替えに時間をかけないこと。** .btn の 0.24 秒をそのまま
+   引き継ぐと、押してから沈むまでが見えてしまい、送りの待ちと合わさって
+   反応が鈍く感じる。ここだけ実質ゼロにする */
+.opt,.opt::after,.opt .ab{transition:background-color .06s linear,color .06s linear}
 .opt,.opt:hover,.opt:active{box-shadow:none;transform:none}
 .opt.sel::after{background:color-mix(in srgb,var(--cat-b) 12%,var(--bg))}
 .opt.sel{color:var(--cat-b);font-weight:600}
@@ -306,6 +314,38 @@ body::before{
    :hover より後ろに置き、hover でも沈んだままにしておく */
 .opt.sel,.opt.sel:hover{box-shadow:var(--in);color:var(--cat-b);font-weight:600}
 .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+
+/* 入口。漢字を大きく、左右交互に置く */
+.lp{margin-top:34px}
+.lp-row{display:flex;align-items:center;gap:18px;margin-bottom:26px}
+.lp-row.rev{flex-direction:row-reverse}
+.lp-k{flex:none;width:76px;height:76px;border-radius:24px;box-shadow:var(--out);
+  display:flex;align-items:center;justify-content:center;
+  font-size:38px;font-weight:600;letter-spacing:0;color:var(--ink)}
+.lp-row p{font-size:12.5px;line-height:2;color:var(--ink-70);margin:0}
+.lp-row.rev p{text-align:right}
+.lp-row em{font-style:normal;font-weight:600;color:var(--ink);display:block;margin-bottom:3px}
+.lp-foot{font-size:12.5px;line-height:2;color:var(--ink-45);text-align:center;margin:34px 0 4px}
+
+/* 表紙の3つ。320px でも3列を保つので、文字を小さくして折り返す */
+.tri{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:26px}
+.tri-b{min-height:96px;padding:14px 8px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+.tri-b b{font-size:12.5px;font-weight:600;line-height:1.6;letter-spacing:.02em}
+.tri-b .tn{font-size:10.5px;color:var(--ink-45);letter-spacing:.06em}
+.tri-b.off{box-shadow:var(--in);color:var(--ink-25);cursor:default}
+.tri-b.off .tn{color:var(--ink-25)}
+
+/* 比較で何を使うかを選ぶ行。選択中＝窪み、というこのUIの決まりに合わせる */
+.pick{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.pk{display:flex;align-items:center;gap:10px;min-height:46px;padding:11px 15px;font-size:13px}
+.pk .mk{flex:none;width:16px;height:16px;border-radius:50%;box-shadow:var(--in)}
+.pk.on .mk{background:var(--ac);box-shadow:none}
+.pk.on{box-shadow:var(--in);font-weight:600}
+.pk .pn{font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:46%}
+.pk .pt{font-size:11px;color:var(--ink-70);margin-left:auto;text-align:right;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ===== 結果 ===== */
 .rlabel{font-size:11px;letter-spacing:.16em;color:var(--ink-45);margin:22px 0 8px;padding-right:52px}
@@ -430,28 +470,66 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 <div id="app">
 
   <!-- 表紙 -->
-  <section id="s-home" class="screen on">
+  <!-- 入口。陰陽冷温が何を指しているかだけ置く -->
+  <section id="s-intro" class="screen on">
+    <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
+    <div class="lp">
+      <div class="lp-row"><b class="lp-k">陰</b>
+        <p><em>影として立つ人。</em>前に出ないのは、引いているからではありません。一歩さがった場所からのほうが、場の全体はよく見えます。声の大きさと、支えている量は比例しません。</p></div>
+      <div class="lp-row rev"><b class="lp-k">陽</b>
+        <p><em>最初に口を開く人。</em>沈黙を破るのはいつも誰かの一言です。その一言があるから輪ができて、輪ができるから場が始まります。明るさは、責任の引き受け方のひとつです。</p></div>
+      <div class="lp-row"><b class="lp-k">冷</b>
+        <p><em>事実から目をそらさない人。</em>優しさより先に、正しさを差し出します。冷たいのではありません。相手を、正しさに耐えられる人だと見ているだけです。</p></div>
+      <div class="lp-row rev"><b class="lp-k">温</b>
+        <p><em>相手の側に立ってから話す人。</em>角を丸めるのは弱さではなく、続けるための技術です。守られた関係の多くは、誰かが黙って飲み込んだ言葉の上にあります。</p></div>
+    </div>
+    <p class="lp-foot">どれが良いということはありません。<br>あなたがどこに立っているかを、35問で測ります。</p>
+    <div class="acts"><button class="btn primary" id="btn-enter">はじめる</button></div>
+  </section>
+
+  <section id="s-home" class="screen">
     <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
     <p class="lede"><b>ビッグファイブ</b>（外向性・協調性・誠実性・情緒安定性・開放性）を、35問すべて2択で測ります。結果は5角形と、64種のタイプ名で出ます。<br>人を診断して送ることもできます。送られた側は、自分の見立てとのズレを見られます。</p>
 
-    <p class="eyebrow">診断する</p>
-    <div class="cats" id="menu"></div>
-
-    <div class="group" id="inbox" hidden>
-      <p class="eyebrow">届いた他己評価 <span id="inbox-count" class="cnt"></span></p>
-      <div class="cats" id="inboxlist"></div>
+    <div class="tri">
+      <button class="btn tri-b" id="go-self"><b>自分を<br>診断する</b><span class="tn" id="n-self"></span></button>
+      <button class="btn tri-b" id="go-peer"><b>他人を<br>診断する</b><span class="tn" id="n-made"></span></button>
+      <button class="btn tri-b" id="go-mirror"><b>他人から<br>見た自分</b><span class="tn" id="n-peer"></span></button>
     </div>
 
-    <div class="group" id="made" hidden>
-      <p class="eyebrow">診断した相手 <span id="made-count" class="cnt"></span></p>
+    <div class="group" id="g-self" hidden>
+      <p class="eyebrow">自己診断の履歴 <span id="self-count" class="cnt"></span></p>
+      <div class="cats" id="selflist"></div>
+    </div>
+
+    <div class="group" id="g-made" hidden>
+      <p class="eyebrow">他人への診断 <span id="made-count" class="cnt"></span></p>
       <div class="cats" id="madelist"></div>
     </div>
 
-    <button class="btn" id="btn-compare">まず自分を診断する</button>
+    <div class="group" id="g-peer" hidden>
+      <p class="eyebrow">届いた他己評価 <span id="peer-count" class="cnt"></span></p>
+      <div class="cats" id="peerlist"></div>
+    </div>
+
     <button class="ghost" id="btn-reset">記録をすべて消す</button>
   </section>
 
   <!-- 設問 -->
+  <!-- 他人を診断する前に名前を決める。ここで保存されるので、中断しても戻れる -->
+  <section id="s-nick" class="screen">
+    <p class="eyebrow">他人を診断する</p>
+    <h2 class="rname" style="font-size:clamp(22px,6.4vw,27px);margin-top:18px">誰を診断しますか</h2>
+    <p class="rlabel" style="margin-top:24px">相手のニックネーム</p>
+    <input class="field" id="n-nick" type="text" maxlength="20" placeholder="たなか"
+           autocomplete="off" autocapitalize="off" enterkeyhint="go">
+    <p class="hint">ここで記録が作られます。途中でやめても、表紙から続きに戻れます。同じ名前で診断し直すと上書きされます。</p>
+    <div class="acts">
+      <button class="btn primary" id="btn-nstart">診断をはじめる</button>
+      <button class="btn" id="btn-nhome">表紙にもどる</button>
+    </div>
+  </section>
+
   <section id="s-quiz" class="screen">
     <div class="qbar">
       <div class="track"><i id="bar"></i></div>
@@ -487,7 +565,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
   <!-- 他人を診断した結果を送る -->
   <section id="s-peer" class="screen">
-    <p class="rlabel">この人はこう見えました</p>
+    <p class="rlabel" id="p-cat"></p>
     <h2 class="rname" id="p-name"></h2>
     <p class="rcatch" id="p-catch"></p>
     <div class="hexwrap"><div id="p-hex"></div></div>
@@ -526,20 +604,20 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
 
   <!-- 比較 -->
   <section id="s-compare" class="screen">
-    <p class="eyebrow">並べて見る</p>
+    <p class="eyebrow">他人から見た自分</p>
     <h2 class="rname" style="font-size:clamp(24px,7vw,29px);margin-top:18px">自分と、まわりから見た自分</h2>
-    <div class="mapwrap"><div id="c-map"></div></div>
-    <p class="mapcap">薄い点は個別の他己評価</p>
-    <p class="rlabel" style="margin-top:22px">他己評価の総合</p>
-    <div class="readout" id="c-readout"></div>
-    <div class="legend" id="c-legend"></div>
-    <div id="c-cards"></div>
+
+    <p class="eyebrow" style="margin-top:28px">比べる自己診断</p>
+    <div class="pick" id="c-selfpick"></div>
+    <p class="eyebrow" style="margin-top:26px">使う他己評価 <span id="c-peercount" class="cnt"></span></p>
+    <div class="pick" id="c-peerpick"></div>
+
+    <div id="c-out"></div>
     <div class="acts">
       <button class="btn primary" id="btn-chome">表紙にもどる</button>
     </div>
   </section>
 
-</div>
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
 </body>
