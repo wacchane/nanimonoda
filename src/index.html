@@ -442,6 +442,11 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
       <div class="cats" id="inboxlist"></div>
     </div>
 
+    <div class="group" id="made" hidden>
+      <p class="eyebrow">診断した相手 <span id="made-count" class="cnt"></span></p>
+      <div class="cats" id="madelist"></div>
+    </div>
+
     <button class="btn" id="btn-compare">まず自分を診断する</button>
     <button class="ghost" id="btn-reset">記録をすべて消す</button>
   </section>
@@ -485,7 +490,12 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
     <p class="rlabel">この人はこう見えました</p>
     <h2 class="rname" id="p-name"></h2>
     <p class="rcatch" id="p-catch"></p>
+    <div class="hexwrap"><div id="p-hex"></div></div>
+    <p class="eyebrow" style="margin-top:30px">陽陰 × 温冷</p>
     <div class="mapwrap"><div id="p-map"></div></div>
+    <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
+    <div id="p-body"></div>
+    <p class="note" id="p-note"></p>
     <p class="rlabel" style="margin-top:26px">あなたのニックネーム</p>
     <input class="field" id="p-nick" type="text" maxlength="20" placeholder="れい"
            autocomplete="off" autocapitalize="off" enterkeyhint="done">
@@ -496,7 +506,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
       <button class="btn" id="btn-pcopy">リンクをコピーする</button>
       <button class="btn" id="btn-phome">表紙にもどる</button>
     </div>
-    <p class="note">この診断結果はどこにも保存されず、サーバーにも送られません。リンクの中に入って、相手にだけ届きます。</p>
+    <p class="note">サーバーには送られません。結果はリンクの中に入って、相手にだけ届きます。診断した相手の記録は、この端末の中にだけ残ります。</p>
   </section>
 
   <!-- 受け取った他己評価 -->

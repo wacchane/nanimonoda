@@ -346,6 +346,16 @@ function quipLine(s) {
   return `${bandName(a, s[a.id].band)}で、${bandName(b, s[b.id].band)}。`
        + QUIP[a.id][s[a.id].band];
 }
+/* 因子ごとの読み。際立っている順に並べる。
+   **自分の結果と他人を診断した結果で、必ず同じものを出すこと。**
+   送る側が薄いと、何を送っているのか分からないまま送ることになる */
+const readCards = s => standout(s).map(f => `
+    <div class="fread">
+      <div class="fh"><b>${f.name}</b><span>${bandName(f, s[f.id].band)}</span>
+        <i>${ten(s[f.id])}</i></div>
+      <p>${READ[f.id][s[f.id].band]}</p>
+    </div>`).join('');
+
 /* 一覧用の短いラベル。冠まで入れると行に収まらないので番号で足す */
 const shortLabel = s => `${codeOf(s)}${subOf(s) + 1} ${CODE_NAME[codeOf(s)]}`;
 
@@ -353,6 +363,11 @@ const ROLE_NOTE = 'どの因子も「高い側が良い」という意味では�
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
 const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
+/* 自分が診断した相手の保存上限。
+   **容量ではなく一覧の読みやすさで決めている。** 1件は回答35ビットを
+   35文字にしただけなので実測100バイト前後、30件でも3KB。localStorage の
+   5MB にはまるで届かない。増やすなら表紙の一覧を畳む作りが先に要る。 */
+const MADE_MAX = 30;
 
 /* ===== 保存 =====
    形: { self: {s,at} | null, peers: [ {nick,s,at} ] }
@@ -364,7 +379,8 @@ const store = (() => {
   try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); ok = true; } catch (e) { ok = false; }
   const shape = o => ({
     self: (o && o.self) || null,
-    peers: (o && Array.isArray(o.peers)) ? o.peers.slice(-PEER_MAX) : []
+    peers: (o && Array.isArray(o.peers)) ? o.peers.slice(-PEER_MAX) : [],
+    made: (o && Array.isArray(o.made)) ? o.made.slice(-MADE_MAX) : []
   });
   return {
     load() {
@@ -377,6 +393,16 @@ const store = (() => {
     }
   };
 })();
+
+/* 診断した相手は「回答そのもの」を1問1文字で持つ。
+   **点数を保存しないこと。** 採点式を直したとき、保存済みの点数だけが
+   古い式のまま残って、新しく診断した相手と比べられなくなる。 */
+const packAns = ans => QS.map((_, i) => (ans[i] ? '1' : '0')).join('');
+const unpackAns = str => {
+  const o = {};
+  for (let i = 0; i < QS.length; i++) o[i] = str[i] === '1' ? 1 : 0;
+  return o;
+};
 
 /* ===== 配色（自動 / ライト / ダーク） ===== */
 const THEMES = [
@@ -687,6 +713,22 @@ function renderHome() {
       b.onclick = () => showResult('peer', +b.dataset.peer));
   }
 
+  const mb = $('made');
+  mb.hidden = !d.made.length;
+  if (d.made.length) {
+    $('made-count').textContent = `${d.made.length} / ${MADE_MAX}`;
+    $('madelist').innerHTML = d.made.slice().reverse().map(m => {
+      const s = score(unpackAns(m.a));
+      return `<button class="btn card done" data-made="${esc(m.nick)}">
+        <span class="dot c"></span>
+        <span class="nm">${esc(m.nick)}</span>
+        <span class="meta">${shortLabel(s)}</span>
+      </button>`;
+    }).join('');
+    document.querySelectorAll('[data-made]').forEach(b =>
+      b.onclick = () => showPeerSend(d.made.find(m => m.nick === b.dataset.made)));
+  }
+
   const ready = d.self && d.peers.length;
   const cb = $('btn-compare');
   cb.disabled = !ready;
@@ -775,13 +817,7 @@ function showResult(kind, idx) {
   paintGroup('s-result', s);
   $('r-hex').innerHTML = radarChart([{ color: 'var(--ac)', s }]);
   $('r-map').innerHTML = drawFlat([{ color: isPeer ? COL.peer : selfCol(s), s }], 'a');
-  /* 際立っている順に、因子ごとの読みを並べる */
-  $('r-body').innerHTML = standout(s).map(f => `
-    <div class="fread">
-      <div class="fh"><b>${f.name}</b><span>${bandName(f, s[f.id].band)}</span>
-        <i>${ten(s[f.id])}</i></div>
-      <p>${READ[f.id][s[f.id].band]}</p>
-    </div>`).join('');
+  $('r-body').innerHTML = readCards(s);
   $('r-note').textContent = isPeer ? PEER_NOTE : ROLE_NOTE;
 
   $('btn-share').hidden = isPeer;
@@ -819,20 +855,38 @@ function shareResult(s) {
 }
 
 /* ===== 他人を診断した結果を送る ===== */
-function showPeerSend() {
-  $('p-name').innerHTML = codeTag(pending.s) + esc(archName(pending.s));
-  $('p-catch').textContent = 'この人はこう見えました';
-  paintGroup('s-peer', pending.s);
-  $('p-map').innerHTML = drawFlat([{ color: COL.peer, s: pending.s }], 'p');
+function showPeerSend(saved) {
+  if (saved) pending = { answers: unpackAns(saved.a), s: score(unpackAns(saved.a)) };
+  const s = pending.s;
+  $('p-name').innerHTML = codeTag(s) + esc(archName(s));
+  $('p-catch').textContent = quipLine(s);
+  paintGroup('s-peer', s);
+  $('p-hex').innerHTML = radarChart([{ color: 'var(--ac)', s }]);
+  $('p-map').innerHTML = drawFlat([{ color: COL.peer, s }], 'p');
+  $('p-body').innerHTML = readCards(s);
+  $('p-note').textContent = PEER_NOTE;
   $('p-link').hidden = true;
   $('p-link').textContent = '';
-  $('p-nick').value = '';
+  $('p-nick').value = saved ? saved.nick : '';
   show('s-peer');
+}
+
+/* 誰を診断したかを端末に残す。同じニックネームは上書きして増やさない */
+function saveMade(nick, answers) {
+  const d = store.load();
+  const rec = { nick, a: packAns(answers), at: Date.now() };
+  const i = d.made.findIndex(m => m.nick === nick);
+  if (i >= 0) d.made[i] = rec; else d.made.push(rec);
+  let full = false;
+  if (d.made.length > MADE_MAX) { d.made = d.made.slice(-MADE_MAX); full = true; }
+  store.save(d);
+  if (full) toast(`診断した相手は${MADE_MAX}件までです。古いものから外しました`);
 }
 
 function peerLink() {
   const nick = $('p-nick').value.trim();
   if (!nick) { toast('ニックネームを入れてください'); $('p-nick').focus(); return null; }
+  saveMade(nick, pending.answers);
   return { nick, url: makeLink(nick, pending.answers) };
 }
 
@@ -934,7 +988,7 @@ $('btn-phome').onclick = goHome;
 $('btn-ihome').onclick = goHome;
 $('btn-theme').onclick = () => toast(theme.next().label);
 $('btn-reset').onclick = () => {
-  store.save({ self: null, peers: [] }); renderHome(); toast('記録を消しました');
+  store.save({ self: null, peers: [], made: [] }); renderHome(); toast('記録を消しました');
 };
 
 $('btn-psend').onclick = async () => {
