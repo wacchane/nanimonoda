@@ -285,6 +285,13 @@ body::before{
 .pk .pt{font-size:11px;color:var(--ink-70);margin-left:auto;text-align:right;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* 五角形の下の、長所と短所 */
+.traits{margin-top:16px;padding:15px 17px;border-radius:var(--r-sm);box-shadow:var(--out-sm)}
+.traits h4{font-size:12px;font-weight:600;letter-spacing:.04em;margin:0;color:var(--ac)}
+.traits dl{margin:0}
+.traits dt{font-size:10.5px;font-weight:600;letter-spacing:.1em;color:var(--ink-45);margin-top:11px}
+.traits dd{margin:3px 0 0;font-size:12.5px;line-height:1.95;color:var(--ink-70)}
+
 /* 画面の左上に置く戻り。タップ対象は44pxを割らない */
 .back{position:absolute;left:-6px;top:calc(18px + env(safe-area-inset-top));
   width:44px;height:44px;border:0;background:none;color:var(--ink-45);
@@ -513,6 +520,7 @@ body::before{
     <h2 class="rname" id="r-name"></h2>
     <p class="rcatch" id="r-catch"></p>
     <div id="r-hex" class="hexwrap"></div>
+    <div class="traits" id="r-traits"></div>
     <p class="eyebrow" style="margin-top:30px">陽陰 × 温冷</p>
     <div class="mapwrap"><div id="r-map"></div></div>
     <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
@@ -532,6 +540,7 @@ body::before{
     <h2 class="rname" id="p-name"></h2>
     <p class="rcatch" id="p-catch"></p>
     <div class="hexwrap"><div id="p-hex"></div></div>
+    <div class="traits" id="p-traits"></div>
     <p class="eyebrow" style="margin-top:30px">陽陰 × 温冷</p>
     <div class="mapwrap"><div id="p-map"></div></div>
     <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
