@@ -383,6 +383,12 @@ body::before{
   font-size:11.5px;color:var(--ink-70);line-height:1.9;margin-top:26px;
   padding:16px 17px;border-radius:var(--r-sm);box-shadow:var(--in);
 }
+/* 最下部に置く但し書き。読み終えたあとに目が行けばよいので、
+   窪みの器は外して小さく中央に置く */
+.note.foot{
+  font-size:10.5px;color:var(--ink-45);line-height:2;text-align:center;
+  margin-top:34px;padding:0 6px;box-shadow:none;border-radius:0;
+}
 .acts{display:flex;flex-direction:column;gap:10px;margin-top:26px}
 .acts .btn{text-align:center;font-size:12.5px;letter-spacing:.08em}
 
@@ -472,7 +478,7 @@ body::before{
 
   <section id="s-home" class="screen">
     <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
-    <p class="lede">外向性・協調性・誠実性・情緒安定性・開放性。<b>ビッグファイブ</b>と呼ばれるこの五つを、35問すべて二択で測ります。結果は五角形と、64種のタイプ名で示します。<br>人を診断して送ることもできます。外から見えている自分と並べれば、自分の見立てとのズレが分かります。</p>
+    <p class="lede">外向性・協調性・誠実性・情緒安定性・開放性。<b>ビッグファイブ</b>と呼ばれるこの五つを、35問すべて二択で測ります。結果は五角形と、64種のタイプ名で示します。</p>
 
     <div class="tri">
       <button class="btn tri-b" id="go-self"><b>自分を<br>診断する</b><span class="tn" id="n-self"></span></button>
@@ -537,13 +543,13 @@ body::before{
     <div class="mapwrap"><div id="r-map"></div></div>
     <p class="eyebrow" style="margin-top:30px">因子ごとの読み</p>
     <div class="rbody" id="r-body"></div>
-    <p class="note" id="r-note"></p>
     <div class="acts">
       <button class="btn primary" id="btn-front">比較する</button>
       <button class="btn" id="btn-other">トップページ</button>
       <button class="btn" id="btn-again">診断をやり直す</button>
       <button class="ghost" id="btn-share">結果をシェアする</button>
     </div>
+    <p class="note foot" id="r-note"></p>
   </section>
 
   <!-- 他人を診断した結果を送る -->
