@@ -1185,6 +1185,16 @@ $('btn-enter').onclick = () => {
   goHome();
 };
 $('btn-lp').onclick = () => show('s-intro');
+
+/* LPの漢字を押すと霧が立つ。飾りなので、押せなくても何も失われない。
+   **付け直す前に必ず外すこと。** 連打したとき、外さないと再生されない */
+document.querySelectorAll('#s-intro .lp-k').forEach(k => {
+  k.onclick = () => {
+    k.classList.remove('fog');
+    void k.offsetWidth;            // ここで再計算させないと animation が掛かり直さない
+    k.classList.add('fog');
+  };
+});
 $('btn-rback').onclick = goHome;
 $('btn-cback').onclick = goHome;
 $('btn-back').onclick = () => { if (!advTimer && cur && cur.i > 0) { cur.i--; renderQ(); } };
