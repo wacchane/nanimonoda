@@ -105,24 +105,51 @@ body::before{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   opacity:var(--star);transition:opacity .4s var(--ease);
   background-repeat:no-repeat;
+  /* 遠い光ふたつと、星。**星は小さいままにすること。**
+     1.5pxを超えると点ではなく粒に見えて、宇宙ではなくノイズになる */
   background-image:
     radial-gradient(58% 42% at 82% 4%,rgba(94,132,232,.15),transparent 72%),
     radial-gradient(46% 34% at 8% 92%,rgba(128,96,232,.11),transparent 74%),
     radial-gradient(1.3px 1.3px at 11% 14%,rgba(255,255,255,.9),transparent 60%),
-    radial-gradient(1px 1px at 27% 7%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.0px 1.0px at 27% 7%,rgba(255,255,255,.55),transparent 60%),
     radial-gradient(1.4px 1.4px at 44% 21%,rgba(255,255,255,.75),transparent 60%),
-    radial-gradient(1px 1px at 63% 11%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.0px 1.0px at 63% 11%,rgba(255,255,255,.5),transparent 60%),
     radial-gradient(1.2px 1.2px at 88% 26%,rgba(255,255,255,.8),transparent 60%),
-    radial-gradient(1px 1px at 7% 38%,rgba(255,255,255,.45),transparent 60%),
+    radial-gradient(1.0px 1.0px at 7% 38%,rgba(255,255,255,.45),transparent 60%),
     radial-gradient(1.3px 1.3px at 34% 47%,rgba(255,255,255,.6),transparent 60%),
-    radial-gradient(1px 1px at 71% 41%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.0px 1.0px at 71% 41%,rgba(255,255,255,.5),transparent 60%),
     radial-gradient(1.4px 1.4px at 93% 55%,rgba(255,255,255,.7),transparent 60%),
-    radial-gradient(1px 1px at 17% 63%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.0px 1.0px at 17% 63%,rgba(255,255,255,.5),transparent 60%),
     radial-gradient(1.2px 1.2px at 52% 71%,rgba(255,255,255,.65),transparent 60%),
-    radial-gradient(1px 1px at 79% 78%,rgba(255,255,255,.45),transparent 60%),
+    radial-gradient(1.0px 1.0px at 79% 78%,rgba(255,255,255,.45),transparent 60%),
     radial-gradient(1.3px 1.3px at 24% 88%,rgba(255,255,255,.6),transparent 60%),
-    radial-gradient(1px 1px at 61% 95%,rgba(255,255,255,.4),transparent 60%);
+    radial-gradient(1.0px 1.0px at 61% 95%,rgba(255,255,255,.4),transparent 60%),
+    radial-gradient(1.0px 1.0px at 3% 9%,rgba(255,255,255,.4),transparent 60%),
+    radial-gradient(1.2px 1.2px at 19% 28%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.1px 1.1px at 38% 4%,rgba(255,255,255,.45),transparent 60%),
+    radial-gradient(1.0px 1.0px at 55% 33%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.3px 1.3px at 68% 24%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1.0px 1.0px at 82% 9%,rgba(255,255,255,.4),transparent 60%),
+    radial-gradient(1.1px 1.1px at 96% 34%,rgba(255,255,255,.5),transparent 60%),
+    radial-gradient(1.2px 1.2px at 12% 51%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.0px 1.0px at 29% 60%,rgba(255,255,255,.4),transparent 60%),
+    radial-gradient(1.1px 1.1px at 46% 56%,rgba(255,255,255,.48),transparent 60%),
+    radial-gradient(1.3px 1.3px at 60% 64%,rgba(255,255,255,.58),transparent 60%),
+    radial-gradient(1.0px 1.0px at 75% 57%,rgba(255,255,255,.42),transparent 60%),
+    radial-gradient(1.2px 1.2px at 89% 69%,rgba(255,255,255,.52),transparent 60%),
+    radial-gradient(1.0px 1.0px at 5% 76%,rgba(255,255,255,.38),transparent 60%),
+    radial-gradient(1.2px 1.2px at 40% 81%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.0px 1.0px at 67% 87%,rgba(255,255,255,.42),transparent 60%),
+    radial-gradient(1.3px 1.3px at 91% 92%,rgba(255,255,255,.58),transparent 60%),
+    radial-gradient(1.0px 1.0px at 33% 34%,rgba(255,255,255,.42),transparent 60%),
+    radial-gradient(1.0px 1.0px at 49% 12%,rgba(255,255,255,.38),transparent 60%),
+    radial-gradient(1.1px 1.1px at 22% 41%,rgba(255,255,255,.46),transparent 60%),
+    radial-gradient(1.0px 1.0px at 84% 45%,rgba(255,255,255,.4),transparent 60%),
+    radial-gradient(1.0px 1.0px at 58% 48%,rgba(255,255,255,.36),transparent 60%),
+    radial-gradient(1.1px 1.1px at 14% 84%,rgba(255,255,255,.46),transparent 60%),
+    radial-gradient(1.0px 1.0px at 73% 68%,rgba(255,255,255,.38),transparent 60%);
 }
+
 #app{position:relative;z-index:1;max-width:460px;margin:0 auto;
   padding:0 20px calc(44px + env(safe-area-inset-bottom))}
 .screen{display:none;padding-top:calc(30px + env(safe-area-inset-top));animation:rise .5s var(--ease) both}
