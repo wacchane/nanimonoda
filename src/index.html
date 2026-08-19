@@ -60,6 +60,12 @@
 
   --r:20px; --r-sm:14px;
   --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  /* **明朝はLPだけで使う。** 本編は角ゴ1系統のまま。
+     秀英にじみ明朝は端末に入っていないので、先頭に置いたうえで
+     ヒラギノ明朝（iOS/macに標準で入る）へ落ちるようにしてある。
+     外部から読み込まない方針は変えない。 */
+  --mincho:"秀英にじみ明朝 L","ShueiNijimiMinPr6N-L","秀英明朝 L","Hiragino Mincho ProN",
+           "ヒラギノ明朝 ProN","Yu Mincho","YuMincho","Noto Serif JP",serif;
   --ease:cubic-bezier(.22,.61,.36,1);
 }
 /* 結果まわりのアクセントを4群で差し替える。data-grp は画面要素に付ける。
@@ -245,25 +251,27 @@ body::before{
 .opt.sel,.opt.sel:hover{box-shadow:var(--in);color:var(--cat-b);font-weight:600}
 .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
 
-/* 入口。漢字を大きく、左右交互に置く */
-.lp{margin-top:34px}
-.lp-row{display:flex;align-items:center;gap:18px;margin-bottom:26px}
-.lp-row.rev{flex-direction:row-reverse}
-/* **漢字はそれぞれの軸の色で置く。** 座標盤の四隅と同じ割り当てにして、
-   結果を見たときに同じ色が同じ意味で戻ってくるようにする */
-.lp-k{flex:none;width:76px;height:76px;border-radius:24px;box-shadow:var(--out);
-  display:flex;align-items:center;justify-content:center;
-  font-size:38px;font-weight:600;letter-spacing:0;color:var(--kc);
-  text-shadow:0 0 22px color-mix(in srgb,var(--kc) 45%,transparent)}
-[data-k="in"]{--kc:var(--shade)}
-[data-k="yo"]{--kc:var(--sun)}
-[data-k="rei"]{--kc:var(--cold)}
-[data-k="on"]{--kc:var(--warm)}
-.lp-row p{font-size:12.5px;line-height:2;color:var(--ink-70);margin:0}
-.lp-row.rev p{text-align:right}
-.lp-row em{font-style:normal;font-weight:600;color:var(--kc);display:block;margin-bottom:5px;
-  font-size:11px;letter-spacing:.14em}
-.lp-foot{font-size:12.5px;line-height:2;color:var(--ink-45);text-align:center;margin:34px 0 4px}
+/* 入口（LP）。**ここだけ明朝。** 本編の角ゴとは混ぜない。
+   漢字は色を付けず白で通す。威厳を出したいので、面も影も置かず字だけを立てる。 */
+#s-intro{font-family:var(--mincho);font-weight:400}
+#s-intro h1{font-family:var(--mincho);font-weight:400;letter-spacing:.22em;
+  text-align:center;padding-right:0;font-size:clamp(30px,9vw,40px)}
+
+.lp{margin-top:40px}
+/* **左右交互にしないこと。** 説明文が右揃えになって読みにくかった。
+   4行とも 漢字が左・文が右で、文は必ず左揃え */
+.lp-row{display:flex;align-items:center;gap:clamp(14px,5vw,26px);
+  min-height:20vh;margin-bottom:clamp(18px,4vh,34px)}
+.lp-k{flex:none;color:var(--ink);font-weight:400;letter-spacing:0;line-height:1;
+  font-size:clamp(80px,33vw,142px);
+  text-shadow:0 0 40px rgba(255,255,255,.18)}
+.lp-row p{flex:1;min-width:0;font-size:clamp(10.5px,3vw,12px);line-height:2.1;
+  color:var(--ink-70);margin:0;text-align:left}
+.lp-row em{font-style:normal;color:var(--ink);display:block;margin-bottom:7px;
+  font-size:clamp(10px,2.8vw,11px);letter-spacing:.22em}
+.lp-foot{font-size:12px;line-height:2.2;color:var(--ink-45);text-align:center;
+  letter-spacing:.14em;margin:40px 0 6px}
+#s-intro .btn{font-family:var(--mincho);letter-spacing:.2em}
 
 /* 表紙の3つ。320px でも3列を保つので、文字を小さくして折り返す */
 .tri{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:26px}
@@ -448,13 +456,13 @@ body::before{
   <section id="s-intro" class="screen on">
     <h1>何者か</h1>
     <div class="lp">
-      <div class="lp-row" data-k="in"><b class="lp-k">陰</b>
+      <div class="lp-row"><b class="lp-k">陰</b>
         <p><em>内に置く</em>灯りを内側に持つ人です。考えは深いところで組み上がり、言葉になるのは最後です。静かな場所で、いちばん遠くまで見えます。</p></div>
-      <div class="lp-row rev" data-k="yo"><b class="lp-k">陽</b>
+      <div class="lp-row"><b class="lp-k">陽</b>
         <p><em>外に出す</em>熱を外へ放つ人です。思いつきがそのまま声になり、その声に人が集まります。動いている場所で、いちばん速く走れます。</p></div>
-      <div class="lp-row" data-k="rei"><b class="lp-k">冷</b>
+      <div class="lp-row"><b class="lp-k">冷</b>
         <p><em>筋で決める</em>物事を筋で見る人です。好き嫌いより先に、正しいかどうかを置きます。迷いが短く、決めたあとがぶれません。</p></div>
-      <div class="lp-row rev" data-k="on"><b class="lp-k">温</b>
+      <div class="lp-row"><b class="lp-k">温</b>
         <p><em>情で決める</em>物事を人で見る人です。正しさより先に、相手の顔を思い浮かべます。手が届く範囲を、確実にあたためます。</p></div>
     </div>
     <p class="lp-foot">35問、すべて2択。3〜4分。</p>
