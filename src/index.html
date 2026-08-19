@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>何者か — ビッグファイブ性格診断</title>
-<meta name="description" content="ビッグファイブを35問すべて2択で測ります。結果は5角形と4文字のタイプ名で出ます。人を診断して送れば、自分の見立てとのズレも見られます。">
+<meta name="description" content="ビッグファイブを35問すべて2択で測ります。結果は5角形と64種のタイプ名で出ます。人を診断して送れば、自分の見立てとのズレも見られます。">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1428" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -312,6 +312,7 @@ body::before{
 .rname{font-size:clamp(24px,7vw,30px);line-height:1.35;letter-spacing:.05em;font-weight:600}
 .rname .code{display:block;font-size:13px;letter-spacing:.28em;margin-bottom:6px;
   color:var(--ac)}
+.rname .code i{font-style:normal;font-size:10px;letter-spacing:0;opacity:.75;margin-left:-.18em}
 .rcatch{font-size:13px;color:var(--ink-70);margin-top:10px;letter-spacing:.02em}
 
 /* 座標盤は面にはめ込んだ窪みとして置く */
@@ -431,7 +432,7 @@ try { var t = localStorage.getItem('nanimonoda.theme') || localStorage.getItem('
   <!-- 表紙 -->
   <section id="s-home" class="screen on">
     <h1>何者か<span class="sub">ビッグファイブ性格診断</span></h1>
-    <p class="lede"><b>ビッグファイブ</b>（外向性・協調性・誠実性・情緒安定性・開放性）を、35問すべて2択で測ります。結果は5角形と、4文字のタイプ名で出ます。<br>人を診断して送ることもできます。送られた側は、自分の見立てとのズレを見られます。</p>
+    <p class="lede"><b>ビッグファイブ</b>（外向性・協調性・誠実性・情緒安定性・開放性）を、35問すべて2択で測ります。結果は5角形と、64種のタイプ名で出ます。<br>人を診断して送ることもできます。送られた側は、自分の見立てとのズレを見られます。</p>
 
     <p class="eyebrow">診断する</p>
     <div class="cats" id="menu"></div>

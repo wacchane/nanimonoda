@@ -253,6 +253,18 @@ const CODE_NAME = {
   ISTP: '黙って直す職人',      ISFP: 'マイペースな感覚派',
   ESTP: '勢いで動く突撃隊',    ESFP: '場を沸かせるムードメーカー'
 };
+/* 16タイプをさらに4つに割る冠。情緒安定性の4段階をそのまま使う。
+   **設問は1問も足していない。** 情緒安定性はもともと7問で測っていて、
+   合計0〜7が4段階に割れる。4文字に入っていなかった唯一の因子なので、
+   ここを冠に回すと 16 × 4 = 64 になり、穴もふさがる。
+
+   **どれかを欠点として読ませないこと。** 感じやすい側は人の不調に最初に
+   気づける側でもある。READ.s の4行と裏表になるように選んである。
+   **base 名と語が重ならない冠を選ぶこと。**「静かな」は INTJ 静かな設計者と
+   ぶつかって「静かな静かな設計者」になる。 */
+const SUB_NAME = ['ガラスの', '揺れる', '動じない', '鋼の'];
+const subOf = s => s.s.band;
+
 /* band 2以上を高い側とみなす */
 const codeOf = s =>
     (s.e.band >= 2 ? 'E' : 'I')
@@ -318,13 +330,14 @@ const standout = s => FACTORS.slice()
   .sort((x, y) => Math.abs(s[y.id].ratio - .5) - Math.abs(s[x.id].ratio - .5));
 const hiSide = (s, f) => s[f.id].band >= 2 ? 1 : 0;
 
-/* 名前は4文字タイプ + このアプリ独自の和名 */
-const archName = s => CODE_NAME[codeOf(s)];
+/* 名前は「情緒安定性の冠 + 4文字タイプの和名」で64通り */
+const archName = s => SUB_NAME[subOf(s)] + CODE_NAME[codeOf(s)];
 /* 4群 = 開放性(N/S) × 協調性(T/F)。4文字コードの文字色をこれで決める。
    NT=紫 / ST=青 / SF=黄 / NF=緑。色は index.html の --g-* に置いてある */
 const groupOf = s => codeOf(s).slice(1, 3);
-/* 見出しの4文字。色は画面に付けた data-grp から降ってくる */
-const codeTag = s => `<span class="code">${codeOf(s)}</span>`;
+/* 見出しの4文字と、情緒安定性の段。色は画面に付けた data-grp から降ってくる。
+   4文字だけでは64種のどれかが決まらないので、段の番号まで出す */
+const codeTag = s => `<span class="code">${codeOf(s)}<i>${subOf(s) + 1}</i></span>`;
 /* 画面ごとに群を宣言する。ここに付けた色を子孫がまとめて継ぐ */
 const paintGroup = (id, s) => $(id).setAttribute('data-grp', groupOf(s));
 /* 見出しの下の一言。段階の言葉 + 辛口の一言 */
@@ -333,10 +346,10 @@ function quipLine(s) {
   return `${bandName(a, s[a.id].band)}で、${bandName(b, s[b.id].band)}。`
        + QUIP[a.id][s[a.id].band];
 }
-/* 一覧用の短いラベル */
-const shortLabel = s => `${codeOf(s)} ${archName(s)}`;
+/* 一覧用の短いラベル。冠まで入れると行に収まらないので番号で足す */
+const shortLabel = s => `${codeOf(s)}${subOf(s) + 1} ${CODE_NAME[codeOf(s)]}`;
 
-const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。なお4文字のタイプには情緒安定性が入りません。5角形のほうもあわせて見てください。';
+const ROLE_NOTE = 'どの因子も「高い側が良い」という意味ではありません。同じ性質が、ある場面では強みに、別の場面では弱みになります。またこの結果は傾向であって、能力や成果を測ったものではありません。';
 const PEER_NOTE = '他己評価は、外から見える行動しか拾えません。一人の時間にホッとするか、人と会った後に疲れるかといった内側の項目は、相手には推測でしか答えられません。そのぶんを差し引いて見てください。';
 
 const PEER_MAX = 8;   // 他己評価の保存上限。5件も集まれば平均はほぼ動かず、増やすと座標盤が読めなくなる
@@ -799,7 +812,7 @@ async function shareOut({ title, text, url }, okMsg) {
 }
 
 function shareResult(s) {
-  const text = `私は「${codeOf(s)} ${archName(s)}」\n`
+  const text = `私は「${codeOf(s)}${subOf(s) + 1} ${archName(s)}」\n`
     + FACTORS.map(f => `${f.name} ${ten(s[f.id])}`).join(' / ')
     + `\n— 何者か`;
   shareOut({ title: '何者か', text }, 'コピーしました');
